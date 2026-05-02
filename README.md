@@ -105,12 +105,13 @@ Copy `backend/.env.example` to `backend/.env` and set:
 This repo now includes a root-level `render.yaml` that configures the FastAPI backend service with:
 
 - `rootDir: backend`
-- `buildCommand: pip install -r requirements.txt`
-- `startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- `buildCommand: python -m pip install -r requirements.txt`
+- `startCommand: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 
 If you already created the Render service manually, either:
 
 - update the service's **Root Directory** to `backend` and **Start Command** to `uvicorn app.main:app --host 0.0.0.0 --port $PORT`, or
+- update the service's **Root Directory** to `backend` and **Start Command** to `python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT`, or
 - delete/recreate the service from this repo so Render picks up `render.yaml`
 
 Do not use the default `gunicorn your_application.wsgi` command for this project because this backend is FastAPI, not Django.
