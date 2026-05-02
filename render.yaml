@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: nuva-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: jwt_secret_key
+        sync: false
+      - key: mongodb_url
+        sync: false
+      - key: mongodb_db_name
+        value: nuva
+      - key: b2_region
+        sync: false
+      - key: b2_endpoint_url
+        sync: false
+      - key: b2_access_key_id
+        sync: false
+      - key: b2_secret_access_key
+        sync: false
+      - key: b2_bucket_name
+        sync: false
+      - key: cloudflare_cdn_base_url
+        sync: false
+      - key: cors_origins
+        value: '["http://localhost:5173","http://127.0.0.1:5173"]'
