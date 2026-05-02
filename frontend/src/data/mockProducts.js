@@ -3,57 +3,129 @@ export const mockProducts = [
     _id: "nuva-ring-1",
     name: "Celeste Diamond Ring",
     description: "A delicate gold ring with a radiant center stone crafted for timeless evenings.",
-    category: "Rings",
+    slug: "celeste-diamond-ring",
+    categoryId: "rings",
+    categoryName: "Rings",
     price: 280,
+    salePrice: 240,
+    currency: "AED",
     stock: 7,
+    lowStockLimit: 3,
     images: [
-      "https://images.unsplash.com/photo-1617038260897-41a1f14a8ca3?auto=format&fit=crop&w=900&q=80"
+      {
+        url: "https://images.unsplash.com/photo-1617038260897-41a1f14a8ca3?auto=format&fit=crop&w=900&q=80",
+        key: "",
+        isPrimary: true,
+        alt: "Celeste Diamond Ring"
+      }
     ],
+    sku: "NUVA-RING-001",
     material: "18K Gold",
     color: "Warm Gold",
-    isFeatured: true
+    size: "Adjustable",
+    weight: "8g",
+    tags: ["diamond", "occasion", "gift"],
+    status: "active",
+    visibility: "visible",
+    isFeatured: true,
+    isBestSeller: true,
+    isNewArrival: false
   },
   {
     _id: "nuva-necklace-1",
     name: "Solene Pendant Necklace",
     description: "A fine pendant necklace with a sculpted silhouette and a soft reflective finish.",
-    category: "Necklaces",
+    slug: "solene-pendant-necklace",
+    categoryId: "necklaces",
+    categoryName: "Necklaces",
     price: 340,
+    salePrice: 299,
+    currency: "AED",
     stock: 12,
+    lowStockLimit: 4,
     images: [
-      "https://images.unsplash.com/photo-1617038220319-276d3cfab638?auto=format&fit=crop&w=900&q=80"
+      {
+        url: "https://images.unsplash.com/photo-1617038220319-276d3cfab638?auto=format&fit=crop&w=900&q=80",
+        key: "",
+        isPrimary: true,
+        alt: "Solene Pendant Necklace"
+      }
     ],
+    sku: "NUVA-NECK-001",
     material: "Gold Vermeil",
     color: "Champagne Gold",
-    isFeatured: true
+    size: "18 inches",
+    weight: "12g",
+    tags: ["layering", "pendant", "minimal"],
+    status: "active",
+    visibility: "visible",
+    isFeatured: true,
+    isBestSeller: false,
+    isNewArrival: true
   },
   {
     _id: "nuva-earrings-1",
     name: "Auric Drop Earrings",
     description: "Elegant drop earrings designed for graceful movement and a premium modern look.",
-    category: "Earrings",
+    slug: "auric-drop-earrings",
+    categoryId: "earrings",
+    categoryName: "Earrings",
     price: 220,
-    stock: 18,
+    salePrice: null,
+    currency: "AED",
+    stock: 2,
+    lowStockLimit: 3,
     images: [
-      "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=900&q=80"
+      {
+        url: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=900&q=80",
+        key: "",
+        isPrimary: true,
+        alt: "Auric Drop Earrings"
+      }
     ],
+    sku: "NUVA-EARR-001",
     material: "14K Gold",
     color: "Soft Gold",
-    isFeatured: false
+    size: "Medium",
+    weight: "10g",
+    tags: ["drop", "minimal", "gold"],
+    status: "active",
+    visibility: "visible",
+    isFeatured: false,
+    isBestSeller: false,
+    isNewArrival: true
   },
   {
     _id: "nuva-bracelet-1",
     name: "Lune Chain Bracelet",
     description: "A refined bracelet with balanced links, subtle shine, and understated luxury.",
-    category: "Bracelets",
+    slug: "lune-chain-bracelet",
+    categoryId: "bracelets",
+    categoryName: "Bracelets",
     price: 195,
+    salePrice: 175,
+    currency: "AED",
     stock: 9,
+    lowStockLimit: 3,
     images: [
-      "https://images.unsplash.com/photo-1620656798579-1984d77f3b5d?auto=format&fit=crop&w=900&q=80"
+      {
+        url: "https://images.unsplash.com/photo-1620656798579-1984d77f3b5d?auto=format&fit=crop&w=900&q=80",
+        key: "",
+        isPrimary: true,
+        alt: "Lune Chain Bracelet"
+      }
     ],
+    sku: "NUVA-BRAC-001",
     material: "Sterling Silver",
     color: "Moonlight Silver",
-    isFeatured: false
+    size: "Small to medium",
+    weight: "9g",
+    tags: ["bracelet", "silver", "gift"],
+    status: "draft",
+    visibility: "hidden",
+    isFeatured: false,
+    isBestSeller: false,
+    isNewArrival: false
   }
 ];
 

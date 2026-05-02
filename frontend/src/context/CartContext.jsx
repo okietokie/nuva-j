@@ -52,7 +52,10 @@ export function CartProvider({ children }) {
   };
 
   const totals = useMemo(() => {
-    const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const subtotal = items.reduce(
+      (sum, item) => sum + (item.displayPrice ?? item.price) * item.quantity,
+      0
+    );
     const shipping = items.length ? 20 : 0;
     return {
       subtotal,

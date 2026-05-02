@@ -1,56 +1,52 @@
-import { Card, Col, Row, Statistic, Table, Tag } from "antd";
-import { useEffect, useState } from "react";
-import { getAllOrders } from "../../services/orderService";
-import { getProducts } from "../../services/productService";
+import { Card, Col, Row, Space, Typography } from "antd";
 
-export default function AdminDashboardPage() {
-  const [products, setProducts] = useState([]);
-  const [orders, setOrders] = useState([]);
+function toneClass(tone) {
+  return `admin-stat-icon admin-stat-icon-${tone}`;
+}
 
-  useEffect(() => {
-    getProducts().then(setProducts);
-    getAllOrders().then(setOrders).catch(() => setOrders([]));
-  }, []);
-
-  const revenue = orders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
-
+export default function AdminDashboardPage({ section }) {
   return (
-    <div>
-      <h1>Admin Dashboard</h1>
-      <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
-        <Col xs={24} md={8}>
-          <Card className="nuva-card">
-            <Statistic title="Products" value={products.length} />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card className="nuva-card">
-            <Statistic title="Orders" value={orders.length} />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card className="nuva-card">
-            <Statistic title="Revenue" value={revenue} prefix="$" />
-          </Card>
-        </Col>
+    <div className="admin-dashboard-page">
+      <div className="admin-page-head">
+        <div>
+          <Typography.Title level={2}>{section.dashboard.title}</Typography.Title>
+          <Typography.Paragraph>{section.dashboard.subtitle}</Typography.Paragraph>
+        </div>
+        <Card className="admin-date-chip">May 20 - May 26, 2024</Card>
+      </div>
+
+      <Row gutter={[18, 18]} className="admin-stats-row">
+        {section.dashboard.stats.map((stat) => (
+          <Col xs={24} sm={12} xl={6} key={stat.label}>
+            <Card className="nuva-card admin-stat-card">
+              <div className={toneClass(stat.tone)} />
+              <Typography.Text className="admin-stat-label">{stat.label}</Typography.Text>
+              <Typography.Title level={3}>{stat.value}</Typography.Title>
+              <Typography.Paragraph className="admin-stat-note">{stat.note}</Typography.Paragraph>
+            </Card>
+          </Col>
+        ))}
       </Row>
-      <Card title="Recent orders" className="nuva-card">
-        <Table
-          rowKey="_id"
-          pagination={false}
-          dataSource={orders.slice(0, 5)}
-          columns={[
-            { title: "Order", dataIndex: "_id" },
-            { title: "Customer", render: (_, record) => record.address.fullName },
-            { title: "Amount", dataIndex: "totalAmount", render: (value) => `$${value}` },
-            {
-              title: "Status",
-              dataIndex: "orderStatus",
-              render: (value) => <Tag color="gold">{value}</Tag>
-            }
-          ]}
-        />
-      </Card>
+
+      <Row gutter={[18, 18]}>
+        {section.dashboard.panels.map((panel) => (
+          <Col xs={24} lg={12} key={panel.title}>
+            <Card
+              className="nuva-card admin-data-card"
+              title={panel.title}
+              extra={panel.action ? <span className="admin-panel-action">{panel.action}</span> : null}
+            >
+              <Space direction="vertical" size={14} style={{ width: "100%" }}>
+                {panel.lines.map((line) => (
+                  <div key={line} className="admin-data-line">
+                    {line}
+                  </div>
+                ))}
+              </Space>
+            </Card>
+          </Col>
+        ))}
+      </Row>
     </div>
   );
 }

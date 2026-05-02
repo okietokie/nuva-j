@@ -14,9 +14,9 @@ export default function CheckoutPage() {
       items: items.map((item) => ({
         productId: item._id,
         name: item.name,
-        price: item.price,
+        price: item.displayPrice ?? item.price,
         quantity: item.quantity,
-        image: item.images[0]
+        image: item.primaryImage
       })),
       totalAmount: totals.total,
       address: values,
@@ -100,16 +100,16 @@ export default function CheckoutPage() {
                 <span>
                   {item.name} x {item.quantity}
                 </span>
-                <strong>${item.price * item.quantity}</strong>
+                <strong>AED {(item.displayPrice ?? item.price) * item.quantity}</strong>
               </div>
             ))}
             <div className="summary-row">
               <span>Shipping</span>
-              <strong>${totals.shipping}</strong>
+              <strong>AED {totals.shipping}</strong>
             </div>
             <div className="summary-row summary-total">
               <span>Total</span>
-              <strong>${totals.total}</strong>
+              <strong>AED {totals.total}</strong>
             </div>
           </Card>
         </Col>

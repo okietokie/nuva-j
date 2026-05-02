@@ -10,23 +10,23 @@ export default function ProductGrid({ products, onAddToCart }) {
             hoverable
             cover={
               <img
-                alt={product.name}
-                src={product.images[0]}
+                alt={product.displayName}
+                src={product.primaryImage}
                 style={{ height: 300, objectFit: "cover" }}
               />
             }
             className="nuva-card"
           >
             <div className="card-topline">
-              <Tag color="gold">{product.category}</Tag>
+              <Tag color="gold">{product.displayCategory}</Tag>
               {product.isFeatured ? <Tag color="brown">Featured</Tag> : null}
             </div>
-            <h3>{product.name}</h3>
+            <h3>{product.displayName}</h3>
             <p>{product.description}</p>
             <div className="product-grid-footer">
-              <strong>${product.price}</strong>
+              <strong>{product.displayPriceLabel}</strong>
               <div className="product-grid-actions">
-                <Link to={`/products/${product._id}`}>
+                <Link to={`/products/${product.slug || product._id}`}>
                   <Button>Details</Button>
                 </Link>
                 <Button type="primary" onClick={() => onAddToCart(product)}>

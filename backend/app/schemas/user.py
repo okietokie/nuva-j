@@ -8,4 +8,8 @@ class UserOut(BaseModel):
     name: str
     email: EmailStr
     role: str
+    adminCode: str | None = None
+    permissions: list[str] = []
+    isActive: bool
     createdAt: datetime
+    lastLoginAt: datetime | None = None

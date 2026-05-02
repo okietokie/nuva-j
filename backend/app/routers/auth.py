@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from app.core.admin import normalize_admin_user
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db.mongodb import get_database
 from app.dependencies.auth import get_current_user
@@ -22,13 +23,17 @@ async def register(payload: RegisterRequest):
     user_data = {
         "name": payload.name,
         "email": payload.email,
-        "password": hash_password(payload.password),
-        "role": "user",
+        "passwordHash": hash_password(payload.password),
+        "role": "customer",
+        "permissions": [],
+        "isActive": True,
+        "adminCode": None,
         "createdAt": now,
+        "lastLoginAt": None,
     }
     result = await db.users.insert_one(user_data)
     created_user = await db.users.find_one({"_id": result.inserted_id})
-    serialized_user = sanitize_user(created_user)
+    serialized_user = normalize_admin_user(sanitize_user(created_user))
     token = create_access_token(serialized_user["email"])
 
     return {"access_token": token, "user": serialized_user}
@@ -38,10 +43,20 @@ async def register(payload: RegisterRequest):
 async def login(payload: LoginRequest):
     db = get_database()
     user = await db.users.find_one({"email": payload.email})
-    if not user or not verify_password(payload.password, user["password"]):
+    password_hash = user.get("passwordHash") if user else None
+    if user and not password_hash:
+        password_hash = user.get("password")
+
+    if not user or not password_hash or not verify_password(payload.password, password_hash):
         raise HTTPException(status_code=400, detail="Invalid email or password.")
 
-    serialized_user = sanitize_user(user)
+    if not user.get("isActive", True):
+        raise HTTPException(status_code=403, detail="This account is inactive.")
+
+    now = datetime.now(timezone.utc)
+    await db.users.update_one({"_id": user["_id"]}, {"$set": {"lastLoginAt": now}})
+    refreshed_user = await db.users.find_one({"_id": user["_id"]})
+    serialized_user = normalize_admin_user(sanitize_user(refreshed_user))
     token = create_access_token(serialized_user["email"])
     return {"access_token": token, "user": serialized_user}
 

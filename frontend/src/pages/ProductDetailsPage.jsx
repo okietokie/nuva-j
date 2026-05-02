@@ -5,14 +5,14 @@ import { getProduct } from "../services/productService";
 import { useCart } from "../context/CartContext";
 
 export default function ProductDetailsPage() {
-  const { productId } = useParams();
+  const { productSlug } = useParams();
   const [product, setProduct] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const { addToCart } = useCart();
 
   useEffect(() => {
-    getProduct(productId).then(setProduct);
-  }, [productId]);
+    getProduct(productSlug).then(setProduct);
+  }, [productSlug]);
 
   if (!product) {
     return null;
@@ -24,22 +24,22 @@ export default function ProductDetailsPage() {
         <Col xs={24} md={12}>
           <Card className="nuva-card">
             <img
-              src={product.images[0]}
-              alt={product.name}
+              src={product.primaryImage}
+              alt={product.displayName}
               style={{ width: "100%", borderRadius: 20, objectFit: "cover" }}
             />
           </Card>
         </Col>
         <Col xs={24} md={12}>
-          <span className="eyebrow">{product.category}</span>
-          <h1>{product.name}</h1>
+          <span className="eyebrow">{product.displayCategory}</span>
+          <h1>{product.displayName}</h1>
           <p className="lead-copy">{product.description}</p>
-          <div className="price-line">${product.price}</div>
+          <div className="price-line">{product.displayPriceLabel}</div>
           <div className="tag-row">
-            <Tag color="gold">{product.material}</Tag>
-            <Tag color="brown">{product.color}</Tag>
+            <Tag color="gold">{product.material || "Material not set"}</Tag>
+            <Tag color="brown">{product.color || "Color not set"}</Tag>
             <Tag color={product.stock > 0 ? "green" : "red"}>
-              {product.stock > 0 ? `${product.stock} in stock` : "Out of stock"}
+              {product.stockStatus}
             </Tag>
           </div>
           <div className="detail-actions">
@@ -53,9 +53,9 @@ export default function ProductDetailsPage() {
             bordered
             style={{ marginTop: 28 }}
             items={[
-              { key: "material", label: "Material", children: product.material },
-              { key: "color", label: "Color", children: product.color },
-              { key: "category", label: "Category", children: product.category }
+              { key: "material", label: "Material", children: product.material || "Not set" },
+              { key: "color", label: "Color", children: product.color || "Not set" },
+              { key: "category", label: "Category", children: product.displayCategory }
             ]}
           />
         </Col>

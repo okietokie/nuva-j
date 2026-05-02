@@ -4,7 +4,7 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.db.mongodb import get_database
-from app.dependencies.auth import get_current_user, require_admin
+from app.dependencies.auth import get_current_user, require_permission
 from app.schemas.order import OrderCreate, OrderStatusUpdate
 from app.utils.serializers import serialize_document, serialize_many
 
@@ -60,7 +60,7 @@ async def get_current_user_orders(current_user=Depends(get_current_user)):
 
 
 @router.get("")
-async def admin_get_all_orders(_admin=Depends(require_admin)):
+async def admin_get_all_orders(_admin=Depends(require_permission("orders.read"))):
     db = get_database()
     orders = await db.orders.find().sort("createdAt", -1).to_list(length=None)
     return serialize_many(orders)
@@ -70,7 +70,7 @@ async def admin_get_all_orders(_admin=Depends(require_admin)):
 async def admin_update_order_status(
     order_id: str,
     payload: OrderStatusUpdate,
-    _admin=Depends(require_admin),
+    _admin=Depends(require_permission("orders.update")),
 ):
     db = get_database()
     object_id = to_object_id(order_id)

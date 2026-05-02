@@ -1,0 +1,50 @@
+[
+  {
+    "name": "Necklaces",
+    "slug": "necklaces",
+    "description": "Elegant necklaces and chains.",
+    "imageUrl": "https://cdn.nuvajewellery.com/categories/necklaces.jpg",
+    "isActive": true,
+    "sortOrder": 1
+  },
+  {
+    "name": "Earrings",
+    "slug": "earrings",
+    "description": "Statement studs, drops, and hoops.",
+    "imageUrl": "https://cdn.nuvajewellery.com/categories/earrings.jpg",
+    "isActive": true,
+    "sortOrder": 2
+  },
+  {
+    "name": "Rings",
+    "slug": "rings",
+    "description": "Signature rings for everyday sparkle.",
+    "imageUrl": "https://cdn.nuvajewellery.com/categories/rings.jpg",
+    "isActive": true,
+    "sortOrder": 3
+  },
+  {
+    "name": "Bracelets",
+    "slug": "bracelets",
+    "description": "Modern bracelets and delicate chains.",
+    "imageUrl": "https://cdn.nuvajewellery.com/categories/bracelets.jpg",
+    "isActive": true,
+    "sortOrder": 4
+  },
+  {
+    "name": "Anklets",
+    "slug": "anklets",
+    "description": "Lightweight anklets for layered styling.",
+    "imageUrl": "https://cdn.nuvajewellery.com/categories/anklets.jpg",
+    "isActive": true,
+    "sortOrder": 5
+  },
+  {
+    "name": "Jewelry Sets",
+    "slug": "jewelry-sets",
+    "description": "Matching sets curated for gifting and events.",
+    "imageUrl": "https://cdn.nuvajewellery.com/categories/jewelry-sets.jpg",
+    "isActive": true,
+    "sortOrder": 6
+  }
+]

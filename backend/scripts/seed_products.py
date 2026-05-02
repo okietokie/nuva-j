@@ -36,8 +36,30 @@ async def seed_products() -> None:
             print("No products found in products.seed.json")
             return
 
+        category_documents = await db.categories.find().to_list(length=None)
+        category_by_slug = {category["slug"]: category for category in category_documents}
+        category_by_name = {category["name"]: category for category in category_documents}
+
+        prepared_products = []
+        for product in normalized_products:
+            category = category_by_slug.get(product.get("categoryId")) or category_by_name.get(
+                product.get("categoryName")
+            )
+            if not category:
+                raise ValueError(
+                    f"Category not found for product '{product['name']}'. Seed categories first."
+                )
+
+            prepared_products.append(
+                {
+                    **product,
+                    "categoryId": str(category["_id"]),
+                    "categoryName": category["name"],
+                }
+            )
+
         await db.products.delete_many({})
-        result = await db.products.insert_many(normalized_products)
+        result = await db.products.insert_many(prepared_products)
         print(f"Inserted {len(result.inserted_ids)} products into the catalog.")
     finally:
         client.close()

@@ -1,80 +1,126 @@
 [
   {
     "name": "Celeste Diamond Ring",
+    "slug": "celeste-diamond-ring",
     "description": "A luminous statement ring with a refined silhouette and timeless sparkle.",
-    "category": "Rings",
+    "categoryId": "rings",
+    "categoryName": "Rings",
     "price": 280,
-    "stock": 7,
+    "salePrice": 240,
+    "currency": "AED",
     "images": [
-      "https://your-cdn-domain.com/products/celeste-diamond-ring-1.jpg"
+      {
+        "url": "https://your-cdn-domain.com/products/celeste-diamond-ring-1.jpg",
+        "key": "products/celeste-diamond-ring-1.jpg",
+        "isPrimary": true,
+        "alt": "Celeste Diamond Ring"
+      }
     ],
+    "stock": 7,
+    "lowStockLimit": 3,
+    "sku": "NUVA-RING-001",
     "material": "18K Gold",
     "color": "Warm Gold",
-    "isFeatured": true
+    "size": "Adjustable",
+    "weight": "8g",
+    "tags": ["diamond", "occasion", "gift"],
+    "status": "active",
+    "visibility": "visible",
+    "isFeatured": true,
+    "isBestSeller": true,
+    "isNewArrival": false
   },
   {
     "name": "Solene Pendant Necklace",
+    "slug": "solene-pendant-necklace",
     "description": "A sculpted pendant necklace designed for quiet luxury and graceful layering.",
-    "category": "Necklaces",
+    "categoryId": "necklaces",
+    "categoryName": "Necklaces",
     "price": 340,
-    "stock": 12,
+    "salePrice": 299,
+    "currency": "AED",
     "images": [
-      "https://your-cdn-domain.com/products/solene-pendant-necklace-1.jpg"
+      {
+        "url": "https://your-cdn-domain.com/products/solene-pendant-necklace-1.jpg",
+        "key": "products/solene-pendant-necklace-1.jpg",
+        "isPrimary": true,
+        "alt": "Solene Pendant Necklace"
+      }
     ],
+    "stock": 12,
+    "lowStockLimit": 4,
+    "sku": "NUVA-NECK-001",
     "material": "Gold Vermeil",
     "color": "Champagne Gold",
-    "isFeatured": true
+    "size": "18 inches",
+    "weight": "12g",
+    "tags": ["layering", "pendant", "minimal"],
+    "status": "active",
+    "visibility": "visible",
+    "isFeatured": true,
+    "isBestSeller": false,
+    "isNewArrival": true
   },
   {
     "name": "Auric Drop Earrings",
+    "slug": "auric-drop-earrings",
     "description": "Elegant drop earrings with fluid movement and a softly radiant finish.",
-    "category": "Earrings",
+    "categoryId": "earrings",
+    "categoryName": "Earrings",
     "price": 220,
-    "stock": 18,
+    "salePrice": null,
+    "currency": "AED",
     "images": [
-      "https://your-cdn-domain.com/products/auric-drop-earrings-1.jpg"
+      {
+        "url": "https://your-cdn-domain.com/products/auric-drop-earrings-1.jpg",
+        "key": "products/auric-drop-earrings-1.jpg",
+        "isPrimary": true,
+        "alt": "Auric Drop Earrings"
+      }
     ],
+    "stock": 2,
+    "lowStockLimit": 3,
+    "sku": "NUVA-EARR-001",
     "material": "14K Gold",
     "color": "Soft Gold",
-    "isFeatured": false
+    "size": "Medium",
+    "weight": "10g",
+    "tags": ["drop", "minimal", "gold"],
+    "status": "active",
+    "visibility": "visible",
+    "isFeatured": false,
+    "isBestSeller": false,
+    "isNewArrival": true
   },
   {
     "name": "Lune Chain Bracelet",
+    "slug": "lune-chain-bracelet",
     "description": "A balanced chain bracelet with subtle shine and a modern heirloom feel.",
-    "category": "Bracelets",
+    "categoryId": "bracelets",
+    "categoryName": "Bracelets",
     "price": 195,
-    "stock": 9,
+    "salePrice": 175,
+    "currency": "AED",
     "images": [
-      "https://your-cdn-domain.com/products/lune-chain-bracelet-1.jpg"
+      {
+        "url": "https://your-cdn-domain.com/products/lune-chain-bracelet-1.jpg",
+        "key": "products/lune-chain-bracelet-1.jpg",
+        "isPrimary": true,
+        "alt": "Lune Chain Bracelet"
+      }
     ],
+    "stock": 9,
+    "lowStockLimit": 3,
+    "sku": "NUVA-BRAC-001",
     "material": "Sterling Silver",
     "color": "Moonlight Silver",
-    "isFeatured": false
-  },
-  {
-    "name": "Elara Pearl Ring",
-    "description": "A delicate pearl ring blending softness, polish, and a luxurious modern profile.",
-    "category": "Rings",
-    "price": 310,
-    "stock": 6,
-    "images": [
-      "https://your-cdn-domain.com/products/elara-pearl-ring-1.jpg"
-    ],
-    "material": "18K Gold",
-    "color": "Ivory Pearl",
-    "isFeatured": true
-  },
-  {
-    "name": "Noor Halo Earrings",
-    "description": "Minimal halo earrings crafted to brighten both everyday looks and evening wear.",
-    "category": "Earrings",
-    "price": 245,
-    "stock": 11,
-    "images": [
-      "https://your-cdn-domain.com/products/noor-halo-earrings-1.jpg"
-    ],
-    "material": "Gold Vermeil",
-    "color": "Champagne Gold",
-    "isFeatured": false
+    "size": "Small to medium",
+    "weight": "9g",
+    "tags": ["bracelet", "silver", "gift"],
+    "status": "draft",
+    "visibility": "hidden",
+    "isFeatured": false,
+    "isBestSeller": false,
+    "isNewArrival": false
   }
 ]

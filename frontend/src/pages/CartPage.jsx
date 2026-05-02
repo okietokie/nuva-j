@@ -1,4 +1,4 @@
-import { Button, Card, Empty, InputNumber, List, Row, Col } from "antd";
+import { Button, Card, Col, Empty, InputNumber, List, Row } from "antd";
 import { Link } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 
@@ -35,13 +35,13 @@ export default function CartPage() {
                     <List.Item.Meta
                       avatar={
                         <img
-                          src={item.images[0]}
+                          src={item.primaryImage}
                           alt={item.name}
                           style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 16 }}
                         />
                       }
                       title={item.name}
-                      description={`${item.material} • $${item.price}`}
+                      description={`${item.material} | ${item.currency} ${item.displayPrice ?? item.price}`}
                     />
                   </List.Item>
                 )}
@@ -52,15 +52,15 @@ export default function CartPage() {
             <Card title="Order Summary" className="nuva-card">
               <div className="summary-row">
                 <span>Subtotal</span>
-                <strong>${totals.subtotal}</strong>
+                <strong>AED {totals.subtotal}</strong>
               </div>
               <div className="summary-row">
                 <span>Shipping</span>
-                <strong>${totals.shipping}</strong>
+                <strong>AED {totals.shipping}</strong>
               </div>
               <div className="summary-row summary-total">
                 <span>Total</span>
-                <strong>${totals.total}</strong>
+                <strong>AED {totals.total}</strong>
               </div>
               <Link to="/checkout">
                 <Button type="primary" size="large" block>

@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.db.mongodb import close_mongo_connection, connect_to_mongo
-from app.routers import auth, orders, products, uploads
+from app.routers import admin_categories, admin_products, auth, categories, orders, products, uploads
 
 
 @asynccontextmanager
@@ -26,6 +26,9 @@ app.add_middleware(
 )
 
 app.include_router(auth.router, prefix=settings.api_v1_prefix)
+app.include_router(admin_products.router, prefix=settings.api_v1_prefix)
+app.include_router(admin_categories.router, prefix=settings.api_v1_prefix)
+app.include_router(categories.router, prefix=settings.api_v1_prefix)
 app.include_router(products.router, prefix=settings.api_v1_prefix)
 app.include_router(orders.router, prefix=settings.api_v1_prefix)
 app.include_router(uploads.router, prefix=settings.api_v1_prefix)

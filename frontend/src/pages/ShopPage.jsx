@@ -2,22 +2,22 @@ import { Input, Select, Space } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import ProductGrid from "../components/ProductGrid";
 import { useCart } from "../context/CartContext";
+import { getCategories } from "../services/categoryService";
 import { getProducts } from "../services/productService";
 
 export default function ShopPage() {
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const { addToCart } = useCart();
 
   useEffect(() => {
     getProducts().then(setProducts);
+    getCategories().then((data) => setCategories(data.map((item) => item.name)));
   }, []);
 
-  const categories = useMemo(
-    () => ["All", ...new Set(products.map((product) => product.category))],
-    [products]
-  );
+  const categoryOptions = useMemo(() => ["All", ...categories], [categories]);
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
@@ -47,7 +47,7 @@ export default function ShopPage() {
         />
         <Select
           value={category}
-          options={categories.map((item) => ({ value: item, label: item }))}
+          options={categoryOptions.map((item) => ({ value: item, label: item }))}
           onChange={setCategory}
           style={{ width: 180 }}
         />

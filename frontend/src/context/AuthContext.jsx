@@ -31,16 +31,11 @@ export function AuthProvider({ children }) {
     localStorage.setItem("nuva_token", response.access_token);
     localStorage.setItem("nuva_user", JSON.stringify(response.user));
     setUser(response.user);
-    messageApi.success("Welcome back to NUVA.");
     return response.user;
   };
 
   const register = async (values) => {
     const response = await registerUser(values);
-    localStorage.setItem("nuva_token", response.access_token);
-    localStorage.setItem("nuva_user", JSON.stringify(response.user));
-    setUser(response.user);
-    messageApi.success("Your NUVA account is ready.");
     return response.user;
   };
 
@@ -51,6 +46,16 @@ export function AuthProvider({ children }) {
     messageApi.info("You have been signed out.");
   };
 
+  const hasPermission = (permission) => {
+    if (!user) {
+      return false;
+    }
+    if (user.role === "super_admin") {
+      return true;
+    }
+    return (user.permissions || []).includes(permission);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -59,8 +64,9 @@ export function AuthProvider({ children }) {
         login,
         register,
         logout,
+        hasPermission,
         isAuthenticated: Boolean(user),
-        isAdmin: user?.role === "admin"
+        isAdmin: user?.role === "admin" || user?.role === "super_admin"
       }}
     >
       {contextHolder}

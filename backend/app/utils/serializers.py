@@ -24,6 +24,7 @@ def serialize_many(documents: list[dict]) -> list[dict]:
 
 def sanitize_user(document: dict | None) -> dict | None:
     serialized = serialize_document(document)
-    if serialized and "password" in serialized:
-        serialized.pop("password")
+    if serialized:
+        serialized.pop("password", None)
+        serialized.pop("passwordHash", None)
     return serialized
