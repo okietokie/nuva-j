@@ -1,0 +1,80 @@
+[
+  {
+    "name": "Celeste Diamond Ring",
+    "description": "A luminous statement ring with a refined silhouette and timeless sparkle.",
+    "category": "Rings",
+    "price": 280,
+    "stock": 7,
+    "images": [
+      "https://your-cdn-domain.com/products/celeste-diamond-ring-1.jpg"
+    ],
+    "material": "18K Gold",
+    "color": "Warm Gold",
+    "isFeatured": true
+  },
+  {
+    "name": "Solene Pendant Necklace",
+    "description": "A sculpted pendant necklace designed for quiet luxury and graceful layering.",
+    "category": "Necklaces",
+    "price": 340,
+    "stock": 12,
+    "images": [
+      "https://your-cdn-domain.com/products/solene-pendant-necklace-1.jpg"
+    ],
+    "material": "Gold Vermeil",
+    "color": "Champagne Gold",
+    "isFeatured": true
+  },
+  {
+    "name": "Auric Drop Earrings",
+    "description": "Elegant drop earrings with fluid movement and a softly radiant finish.",
+    "category": "Earrings",
+    "price": 220,
+    "stock": 18,
+    "images": [
+      "https://your-cdn-domain.com/products/auric-drop-earrings-1.jpg"
+    ],
+    "material": "14K Gold",
+    "color": "Soft Gold",
+    "isFeatured": false
+  },
+  {
+    "name": "Lune Chain Bracelet",
+    "description": "A balanced chain bracelet with subtle shine and a modern heirloom feel.",
+    "category": "Bracelets",
+    "price": 195,
+    "stock": 9,
+    "images": [
+      "https://your-cdn-domain.com/products/lune-chain-bracelet-1.jpg"
+    ],
+    "material": "Sterling Silver",
+    "color": "Moonlight Silver",
+    "isFeatured": false
+  },
+  {
+    "name": "Elara Pearl Ring",
+    "description": "A delicate pearl ring blending softness, polish, and a luxurious modern profile.",
+    "category": "Rings",
+    "price": 310,
+    "stock": 6,
+    "images": [
+      "https://your-cdn-domain.com/products/elara-pearl-ring-1.jpg"
+    ],
+    "material": "18K Gold",
+    "color": "Ivory Pearl",
+    "isFeatured": true
+  },
+  {
+    "name": "Noor Halo Earrings",
+    "description": "Minimal halo earrings crafted to brighten both everyday looks and evening wear.",
+    "category": "Earrings",
+    "price": 245,
+    "stock": 11,
+    "images": [
+      "https://your-cdn-domain.com/products/noor-halo-earrings-1.jpg"
+    ],
+    "material": "Gold Vermeil",
+    "color": "Champagne Gold",
+    "isFeatured": false
+  }
+]
