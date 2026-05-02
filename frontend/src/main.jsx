@@ -13,6 +13,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <ConfigProvider theme={theme}>
       <AuthProvider>
         <CartProvider>
+          
           <RouterProvider router={router} />
         </CartProvider>
       </AuthProvider>
