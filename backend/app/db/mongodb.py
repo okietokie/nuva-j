@@ -8,7 +8,13 @@ database: AsyncIOMotorDatabase | None = None
 
 async def connect_to_mongo():
     global client, database
-    client = AsyncIOMotorClient(settings.mongodb_url)
+    client = AsyncIOMotorClient(
+        settings.mongodb_url,
+        serverSelectionTimeoutMS=5000,
+        connectTimeoutMS=5000,
+        socketTimeoutMS=10000,
+    )
+    await client.admin.command("ping")
     database = client[settings.mongodb_db_name]
 
 
