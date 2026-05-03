@@ -13,10 +13,5 @@ export const productLabels = [
     key: "isFeatured",
     name: "Featured",
     description: "A product flag used for homepage and curated placements."
-  },
-  {
-    key: "salePrice",
-    name: "Sale",
-    description: "A derived label whenever a product has a lower sale price."
   }
 ];

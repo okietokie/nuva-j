@@ -1,6 +1,6 @@
 import { Avatar, Button, Layout, Menu, Typography } from "antd";
 import { DownOutlined } from "@ant-design/icons";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   adminSections,
   findAdminItemByPath,
@@ -45,8 +45,10 @@ export default function AdminLayout() {
       <Content className="admin-content">
         <div className="admin-shell-grid">
           <aside className="admin-brand-rail">
-            <div className="admin-brand-mark">NUVA</div>
-            <div className="admin-brand-subtitle">JEWELRY</div>
+            <Link to="/" aria-label="Go to NUVA home page" className="admin-brand-link">
+              <div className="admin-brand-mark">NUVA</div>
+              <div className="admin-brand-subtitle">JEWELRY</div>
+            </Link>
             <Typography.Paragraph className="admin-side-description">
               {currentSection.description}
             </Typography.Paragraph>

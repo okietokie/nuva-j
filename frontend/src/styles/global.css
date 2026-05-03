@@ -261,6 +261,10 @@ h3,
   border-right: 1px solid rgba(58, 42, 26, 0.06);
 }
 
+.admin-brand-link {
+  display: inline-block;
+}
+
 .admin-brand-mark {
   font-family: "Cormorant Garamond", serif;
   font-size: 3rem;

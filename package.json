@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
     "dev:frontend": "npm run dev --prefix frontend",
-    "dev:backend": ".\\backend\\venv\\Scripts\\python.exe -m pip install -r backend\\requirements.txt && .\\backend\\venv\\Scripts\\python.exe -m uvicorn --app-dir backend app.main:app --reload --host 127.0.0.1 --port 8000"
+    "dev:backend": ".\\backend\\venv\\Scripts\\python.exe -m uvicorn --app-dir backend app.main:app --reload --host 127.0.0.1 --port 8000"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

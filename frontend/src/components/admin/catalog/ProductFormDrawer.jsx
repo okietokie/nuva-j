@@ -8,14 +8,23 @@ import {
   Input,
   InputNumber,
   Modal,
+  Radio,
   Row,
   Select,
-  Space,
-  Steps,
   Spin,
   message
 } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import {
+  AppstoreOutlined,
+  BulbOutlined,
+  CheckOutlined,
+  EyeOutlined,
+  FileTextOutlined,
+  InfoCircleOutlined,
+  PictureOutlined,
+  PlusOutlined,
+  TagOutlined
+} from "@ant-design/icons";
 import { createProduct, getProduct, updateProduct, uploadProductImage } from "../../../services/productService";
 import { createCategory } from "../../../services/categoryService";
 import { buildProductPayload } from "../../../utils/productTransforms";
@@ -23,6 +32,15 @@ import { getApiErrorMessage } from "../../../utils/getApiErrorMessage";
 import ProductImageUploader from "./ProductImageUploader";
 
 const occasionOptions = ["Daily Wear", "Wedding", "Gift", "Party", "Office", "Travel"];
+const materialOptions = ["Sterling Silver", "18K Gold", "14K Gold", "Gold Vermeil", "Rose Gold"];
+const platingOptions = ["Gold Plated", "Rhodium Plated", "Silver Finish", "Rose Gold Finish"];
+const stoneOptions = ["Diamond", "Pearl", "Cubic Zirconia", "Moissanite", "Emerald", "None"];
+const colorOptions = ["Gold", "Silver", "Rose Gold", "White", "Black", "Multicolor"];
+const labelOptions = [
+  { name: "isFeatured", label: "Featured Product" },
+  { name: "isBestSeller", label: "Best Seller" },
+  { name: "isNewArrival", label: "New Arrival" }
+];
 
 const defaultValues = {
   name: "",
@@ -34,7 +52,6 @@ const defaultValues = {
   status: "draft",
   visibility: "hidden",
   price: 0,
-  salePrice: null,
   currency: "AED",
   taxIncluded: true,
   stock: 0,
@@ -56,11 +73,36 @@ const defaultValues = {
 };
 
 const sectionItems = [
-  { key: "basic", label: "Basic Information" },
-  { key: "pricing", label: "Pricing & Inventory" },
-  { key: "images", label: "Images" },
-  { key: "details", label: "Product Details" },
-  { key: "visibility", label: "Visibility & Labels" }
+  {
+    key: "basic",
+    label: "Basic Information",
+    description: "Name, category, SKU and product story.",
+    icon: FileTextOutlined
+  },
+  {
+    key: "pricing",
+    label: "Pricing & Inventory",
+    description: "Price, stock, tax and availability settings.",
+    icon: TagOutlined
+  },
+  {
+    key: "images",
+    label: "Images",
+    description: "Upload, order and crop product visuals.",
+    icon: PictureOutlined
+  },
+  {
+    key: "details",
+    label: "Product Details",
+    description: "Material, size, weight and extra attributes.",
+    icon: AppstoreOutlined
+  },
+  {
+    key: "visibility",
+    label: "Visibility & Labels",
+    description: "Status, storefront visibility and merchandising tags.",
+    icon: EyeOutlined
+  }
 ];
 
 function loadImage(src) {
@@ -136,7 +178,7 @@ export default function ProductFormDrawer({
   const canSave = isEdit ? canUpdate : canCreate;
   const stepFieldMap = [
     ["name", "categoryId", "sku", "description"],
-    ["price", "salePrice", "currency", "stock", "lowStockLimit", "taxIncluded", "allowBackorder"],
+    ["price", "currency", "stock", "lowStockLimit", "taxIncluded", "allowBackorder"],
     ["images"],
     ["material", "plating", "stoneType", "color", "size", "weight", "occasion", "careInstructions"],
     ["status", "visibility", "isFeatured", "isBestSeller", "isNewArrival", "tags"]
@@ -367,22 +409,48 @@ export default function ProductFormDrawer({
   };
 
   const renderStepContent = () => {
-    if (currentStep === 0) {
+    const currentSection = sectionItems[currentStep];
+
+    const renderStageHeader = () => (
+      <div className="catalog-form-stage-head">
+        <div>
+          <span className="catalog-form-stage-kicker">
+            Step {currentStep + 1} of {sectionItems.length}
+          </span>
+          <h4>{currentSection.label}</h4>
+          <p>{currentSection.description}</p>
+        </div>
+      </div>
+    );
+
+    const renderEmptyState = () => (
+      <div className="catalog-form-stage-empty">
+        <div className="catalog-form-stage-empty-icon">
+          <currentSection.icon />
+        </div>
+        <strong>Content for this section is coming next.</strong>
+        <p>
+          The layout is ready and responsive. We can plug in the fields for
+          {` ${currentSection.label.toLowerCase()}`} in the next pass.
+        </p>
+      </div>
+    );
+
+    if (currentSection.key === "basic") {
       return (
-        <section className="catalog-form-step">
-          <h4>Basic Information</h4>
-          <Row gutter={16}>
-            <Col span={24}>
+        <section className="catalog-form-stage">
+          {renderStageHeader()}
+          <Row gutter={[16, 18]}>
+            <Col xs={24}>
               <Form.Item label="Product Name" name="name" rules={[{ required: true }]}>
-                <Input placeholder="Enter product name" disabled={!canSave} />
+                <Input placeholder="Untitled Product" disabled={!canSave} />
               </Form.Item>
             </Col>
-          </Row>
-          <Row gutter={16}>
-            <Col xs={24} md={12}>
+            <Col xs={24} lg={12}>
               <Form.Item label="Category" name="categoryId">
                 <Select
                   showSearch
+                  allowClear
                   options={categoryOptions}
                   placeholder="Select category"
                   disabled={!canSave}
@@ -408,61 +476,20 @@ export default function ProductFormDrawer({
                 />
               </Form.Item>
             </Col>
-            <Col xs={24} md={12}>
+            <Col xs={24} lg={12}>
               <Form.Item label="SKU" name="sku">
                 <Input placeholder="Enter SKU" disabled={!canSave} />
               </Form.Item>
             </Col>
-          </Row>
-          <Form.Item label="Description" name="description">
-            <Input.TextArea rows={4} maxLength={1000} showCount disabled={!canSave} />
-          </Form.Item>
-        </section>
-      );
-    }
-
-    if (currentStep === 1) {
-      return (
-        <section className="catalog-form-step">
-          <h4>Pricing & Inventory</h4>
-          <Row gutter={16}>
-            <Col xs={24} md={8}>
-              <Form.Item label="Price" name="price" rules={[{ required: true }]}>
-                <InputNumber min={0} style={{ width: "100%" }} disabled={!canSave} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={8}>
-              <Form.Item label="Sale Price" name="salePrice">
-                <InputNumber min={0} style={{ width: "100%" }} disabled={!canSave} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={8}>
-              <Form.Item label="Currency" name="currency">
-                <Select options={[{ label: "AED", value: "AED" }]} disabled={!canSave} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={16}>
-            <Col xs={24} md={8}>
-              <Form.Item label="Stock Quantity" name="stock">
-                <InputNumber min={0} style={{ width: "100%" }} disabled={!canSave} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={8}>
-              <Form.Item label="Low Stock Limit" name="lowStockLimit">
-                <InputNumber min={0} style={{ width: "100%" }} disabled={!canSave} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={8}>
-              <Form.Item label="Tax Included" name="taxIncluded" valuePropName="checked">
-                <Checkbox disabled={!canSave}>Yes</Checkbox>
-              </Form.Item>
-              <Form.Item
-                label="Allow purchase when out of stock"
-                name="allowBackorder"
-                valuePropName="checked"
-              >
-                <Checkbox disabled={!canSave}>Yes</Checkbox>
+            <Col xs={24}>
+              <Form.Item label="Description" name="description">
+                <Input.TextArea
+                  rows={6}
+                  maxLength={1000}
+                  showCount
+                  placeholder="Enter product description..."
+                  disabled={!canSave}
+                />
               </Form.Item>
             </Col>
           </Row>
@@ -470,10 +497,10 @@ export default function ProductFormDrawer({
       );
     }
 
-    if (currentStep === 2) {
+    if (currentSection.key === "images") {
       return (
-        <section className="catalog-form-step">
-          <h4>Product Images</h4>
+        <section className="catalog-form-stage">
+          {renderStageHeader()}
           <ProductImageUploader
             images={imageList}
             uploading={uploading}
@@ -504,112 +531,253 @@ export default function ProductFormDrawer({
               )
             }
           />
+          <div className="catalog-inline-tip">
+            <BulbOutlined />
+            <span>Tip: Use clean, well-lit images with a plain background for the best results.</span>
+          </div>
         </section>
       );
     }
 
-    if (currentStep === 3) {
+    if (currentSection.key === "pricing") {
       return (
-        <section className="catalog-form-step">
-          <h4>Product Details</h4>
-          <Row gutter={16}>
-            <Col xs={24} md={8}>
+        <section className="catalog-form-stage">
+          {renderStageHeader()}
+          <Row gutter={[16, 18]}>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item label="Price" name="price" rules={[{ required: true }]}>
+                <InputNumber
+                  min={0}
+                  style={{ width: "100%" }}
+                  placeholder="0.00"
+                  disabled={!canSave}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item label="Currency" name="currency" rules={[{ required: true }]}>
+                <Select
+                  options={[{ label: "AED", value: "AED" }]}
+                  disabled={!canSave}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item label="Stock Quantity" name="stock" rules={[{ required: true }]}>
+                <InputNumber
+                  min={0}
+                  style={{ width: "100%" }}
+                  placeholder="0"
+                  disabled={!canSave}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item label="Low Stock Limit" name="lowStockLimit">
+                <InputNumber
+                  min={0}
+                  style={{ width: "100%" }}
+                  placeholder="0"
+                  disabled={!canSave}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} xl={8}>
+              <div className="catalog-choice-card compact">
+                <div className="catalog-choice-head">
+                  <strong>Tax Included</strong>
+                </div>
+                <Form.Item name="taxIncluded" className="catalog-choice-form-item">
+                  <Radio.Group className="catalog-choice-group" disabled={!canSave}>
+                    <Radio value>Yes</Radio>
+                    <Radio value={false}>No</Radio>
+                  </Radio.Group>
+                </Form.Item>
+              </div>
+            </Col>
+            <Col xs={24} xl={16}>
+              <div className="catalog-choice-card">
+                <div className="catalog-choice-head">
+                  <strong>Allow purchase when out of stock</strong>
+                  <span>Choose whether customers can still place orders when stock reaches zero.</span>
+                </div>
+                <Form.Item name="allowBackorder" className="catalog-choice-form-item">
+                  <Radio.Group className="catalog-choice-group" disabled={!canSave}>
+                    <Radio value>
+                      <span className="catalog-choice-label">Yes</span>
+                      <span className="catalog-choice-copy">
+                        Customers can place orders even when stock is out.
+                      </span>
+                    </Radio>
+                    <Radio value={false}>
+                      <span className="catalog-choice-label">No</span>
+                      <span className="catalog-choice-copy">
+                        Customers cannot place orders when stock is out.
+                      </span>
+                    </Radio>
+                  </Radio.Group>
+                </Form.Item>
+              </div>
+            </Col>
+          </Row>
+        </section>
+      );
+    }
+
+    if (currentSection.key === "details") {
+      return (
+        <section className="catalog-form-stage">
+          {renderStageHeader()}
+          <Row gutter={[16, 18]}>
+            <Col xs={24} md={12} xl={8}>
               <Form.Item label="Material" name="material">
-                <Input disabled={!canSave} />
+                <Select
+                  allowClear
+                  placeholder="Select material"
+                  options={materialOptions.map((value) => ({ value, label: value }))}
+                  disabled={!canSave}
+                />
               </Form.Item>
             </Col>
-            <Col xs={24} md={8}>
+            <Col xs={24} md={12} xl={8}>
               <Form.Item label="Plating" name="plating">
-                <Input disabled={!canSave} />
+                <Select
+                  allowClear
+                  placeholder="Select plating"
+                  options={platingOptions.map((value) => ({ value, label: value }))}
+                  disabled={!canSave}
+                />
               </Form.Item>
             </Col>
-            <Col xs={24} md={8}>
+            <Col xs={24} md={12} xl={8}>
               <Form.Item label="Stone Type" name="stoneType">
-                <Input disabled={!canSave} />
+                <Select
+                  allowClear
+                  placeholder="Select stone type"
+                  options={stoneOptions.map((value) => ({ value, label: value }))}
+                  disabled={!canSave}
+                />
               </Form.Item>
             </Col>
-          </Row>
-          <Row gutter={16}>
-            <Col xs={24} md={8}>
+            <Col xs={24} md={12} xl={8}>
               <Form.Item label="Color" name="color">
-                <Input disabled={!canSave} />
+                <Select
+                  allowClear
+                  placeholder="Select color"
+                  options={colorOptions.map((value) => ({ value, label: value }))}
+                  disabled={!canSave}
+                />
               </Form.Item>
             </Col>
-            <Col xs={24} md={8}>
+            <Col xs={24} md={12} xl={8}>
               <Form.Item label="Size" name="size">
-                <Input disabled={!canSave} />
+                <Input placeholder="Enter size" disabled={!canSave} />
               </Form.Item>
             </Col>
-            <Col xs={24} md={8}>
+            <Col xs={24} md={12} xl={8}>
               <Form.Item label="Weight" name="weight">
-                <Input disabled={!canSave} />
+                <Input placeholder="Enter weight" addonAfter="grams" disabled={!canSave} />
               </Form.Item>
             </Col>
-          </Row>
-          <Row gutter={16}>
-            <Col xs={24} md={12}>
+            <Col xs={24} md={12} xl={8}>
               <Form.Item label="Occasion" name="occasion">
                 <Select
                   allowClear
+                  placeholder="Select occasion"
                   options={occasionOptions.map((value) => ({ value, label: value }))}
                   disabled={!canSave}
                 />
               </Form.Item>
             </Col>
-            <Col xs={24} md={12}>
+            <Col xs={24} md={12} xl={16}>
               <Form.Item label="Care Instructions" name="careInstructions">
-                <Input.TextArea rows={3} disabled={!canSave} />
+                <Input.TextArea
+                  rows={5}
+                  maxLength={500}
+                  showCount
+                  placeholder="Enter care instructions..."
+                  disabled={!canSave}
+                />
               </Form.Item>
             </Col>
           </Row>
+          <div className="catalog-inline-tip">
+            <InfoCircleOutlined />
+            <span>
+              Tip: Accurate details help customers make better purchasing decisions and reduce returns.
+            </span>
+          </div>
+        </section>
+      );
+    }
+
+    if (currentSection.key === "visibility") {
+      return (
+        <section className="catalog-form-stage">
+          {renderStageHeader()}
+          <Row gutter={[16, 18]}>
+            <Col xs={24} lg={12}>
+              <Form.Item label="Product Status" name="status">
+                <Select
+                  options={[
+                    { label: "Active", value: "active" },
+                    { label: "Draft", value: "draft" },
+                    { label: "Archived", value: "archived" }
+                  ]}
+                  disabled={!canSave}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} lg={12}>
+              <Form.Item label="Storefront Visibility" name="visibility">
+                <Select
+                  options={[
+                    { label: "Visible", value: "visible" },
+                    { label: "Hidden", value: "hidden" }
+                  ]}
+                  disabled={!canSave}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <div className="catalog-visibility-panel">
+            <div className="catalog-visibility-panel-head">
+              <strong>Product Labels</strong>
+              <span>Select labels that help merchandise this item across the storefront.</span>
+            </div>
+            <div className="catalog-label-grid">
+              {labelOptions.map((item) => (
+                <Form.Item key={item.name} name={item.name} valuePropName="checked" noStyle>
+                  <Checkbox className="catalog-label-chip" disabled={!canSave}>
+                    {item.label}
+                  </Checkbox>
+                </Form.Item>
+              ))}
+            </div>
+          </div>
+
+          <Form.Item label="Tags" name="tags">
+            <Select
+              mode="tags"
+              tokenSeparators={[","]}
+              placeholder="gift, minimal, pearl"
+              disabled={!canSave}
+            />
+          </Form.Item>
+
+          <div className="catalog-inline-tip">
+            <BulbOutlined />
+            <span>Tip: Use clear labels and tags so products are easier to discover and promote.</span>
+          </div>
         </section>
       );
     }
 
     return (
-      <section className="catalog-form-step">
-        <h4>Visibility & Labels</h4>
-        <Row gutter={16}>
-          <Col xs={24} md={12}>
-            <Form.Item label="Status" name="status">
-              <Select
-                options={[
-                  { label: "Active", value: "active" },
-                  { label: "Draft", value: "draft" },
-                  { label: "Archived", value: "archived" }
-                ]}
-                disabled={!canSave}
-              />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item label="Visibility" name="visibility">
-              <Select
-                options={[
-                  { label: "Visible", value: "visible" },
-                  { label: "Hidden", value: "hidden" }
-                ]}
-                disabled={!canSave}
-              />
-            </Form.Item>
-          </Col>
-        </Row>
-
-        <div className="catalog-label-checks">
-          <Form.Item name="isFeatured" valuePropName="checked" noStyle>
-            <Checkbox disabled={!canSave}>Featured Product</Checkbox>
-          </Form.Item>
-          <Form.Item name="isBestSeller" valuePropName="checked" noStyle>
-            <Checkbox disabled={!canSave}>Bestseller</Checkbox>
-          </Form.Item>
-          <Form.Item name="isNewArrival" valuePropName="checked" noStyle>
-            <Checkbox disabled={!canSave}>New Arrival</Checkbox>
-          </Form.Item>
-        </div>
-
-        <Form.Item label="Tags" name="tags">
-          <Select mode="tags" tokenSeparators={[","]} disabled={!canSave} />
-        </Form.Item>
+      <section className="catalog-form-stage">
+        {renderStageHeader()}
+        {renderEmptyState()}
       </section>
     );
   };
@@ -621,31 +789,81 @@ export default function ProductFormDrawer({
         onClose={onClose}
         forceRender
         destroyOnHidden={false}
-        width={920}
+        width="min(1320px, calc(100vw - 24px))"
         onCancel={onClose}
         className="catalog-form-modal"
-        title={productId ? "Edit Product" : "Add Product"}
-        footer={
-          <div className="catalog-modal-footer">
+        title={null}
+        footer={null}
+      >
+        <div className="catalog-modal-shell">
+          <header className="catalog-modal-header">
+            <div>
+              <h3>{productId ? "Edit Product" : "Add Product"}</h3>
+            </div>
+          </header>
+
+          <div className="catalog-modal-layout">
+            <aside className="catalog-modal-sidebar" aria-label="Product form sections">
+              {sectionItems.map((item, index) => {
+                const Icon = item.icon;
+                const isActive = currentStep === index;
+                const isComplete = index < currentStep;
+
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    className={[
+                      "catalog-step-card",
+                      isActive ? "is-active" : "",
+                      isComplete ? "is-complete" : ""
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    onClick={() => {
+                      setSaveError("");
+                      setCurrentStep(index);
+                    }}
+                  >
+                    <div className="catalog-step-marker">
+                      {isComplete ? <CheckOutlined /> : index + 1}
+                    </div>
+                    <div className="catalog-step-icon">
+                      <Icon />
+                    </div>
+                    <div className="catalog-step-copy">
+                      <strong>{item.label}</strong>
+                      <span>{item.description}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </aside>
+
+            <Form
+              form={form}
+              layout="vertical"
+              className="catalog-modal-form"
+              onFinish={(values) => handleSubmit(values)}
+            >
+              {saveError ? (
+                <Alert
+                  type="error"
+                  showIcon
+                  message={saveError}
+                  className="catalog-form-alert"
+                />
+              ) : null}
+              {productLoading ? <Spin /> : renderStepContent()}
+            </Form>
+          </div>
+
+          <footer className="catalog-modal-footer">
             <Button onClick={onClose}>Cancel</Button>
             <Button onClick={goBack} disabled={currentStep === 0}>
               Back
             </Button>
-            <Button
-              onClick={async () => {
-                try {
-                  const values = form.getFieldsValue(true);
-                  await handleSubmit(values, { status: "draft", visibility: "hidden" });
-                } catch (error) {
-                  const detail = getApiErrorMessage(error, "Draft save failed.");
-                  setSaveError(detail);
-                  message.error(detail);
-                }
-              }}
-              disabled={!canSave}
-            >
-              Save as Draft
-            </Button>
+            <Button disabled>Save as Draft</Button>
             <Button
               type="primary"
               loading={saving}
@@ -654,32 +872,7 @@ export default function ProductFormDrawer({
             >
               {currentStep === sectionItems.length - 1 ? "Save Product" : "Next"}
             </Button>
-          </div>
-        }
-      >
-        <div className="catalog-modal-shell">
-          <Steps
-            current={currentStep}
-            items={sectionItems.map((item) => ({ title: item.label }))}
-            className="catalog-form-steps"
-          />
-
-          <Form
-            form={form}
-            layout="vertical"
-            className="catalog-modal-form"
-            onFinish={(values) => handleSubmit(values)}
-          >
-            {saveError ? (
-              <Alert
-                type="error"
-                showIcon
-                message={saveError}
-                className="catalog-form-alert"
-              />
-            ) : null}
-            {productLoading ? <Spin /> : renderStepContent()}
-          </Form>
+          </footer>
         </div>
       </Modal>
 

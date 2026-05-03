@@ -14,9 +14,4 @@ PRODUCT_LABELS = [
         "name": "Featured",
         "description": "Highlights products in curated placements across the storefront.",
     },
-    {
-        "key": "salePrice",
-        "name": "Sale",
-        "description": "Derived from products that have a valid sale price below the regular price.",
-    },
 ]

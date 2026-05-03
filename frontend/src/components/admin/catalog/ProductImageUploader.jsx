@@ -47,15 +47,28 @@ export default function ProductImageUploader({
       <div className="product-image-uploader">
         <div className="image-upload-dropzone">
           <Upload customRequest={onUpload} showUploadList={false} multiple>
-            <Button icon={<UploadOutlined />} loading={uploading}>
-              Upload Images
-            </Button>
+            <div className={`image-upload-trigger${uploading ? " is-uploading" : ""}`}>
+              <div className="image-upload-trigger-icon">
+                <UploadOutlined />
+              </div>
+              <div className="image-upload-copy">
+                <span className="image-upload-title">Upload Images</span>
+                <p>Drag &amp; drop images here or click to browse</p>
+                <span className="image-upload-meta">
+                  JPG, PNG or WEBP • Max 10MB per image • Recommended size: 2000x2000px
+                </span>
+              </div>
+            </div>
           </Upload>
-          <p>Upload high quality images. First image will be primary.</p>
         </div>
 
         {images.length ? (
-          <div className="uploaded-product-grid">
+          <>
+            <div className="uploaded-images-head">
+              <strong>Uploaded Images</strong>
+              <span>({images.length}/10)</span>
+            </div>
+            <div className="uploaded-product-grid">
             {images.map((image, index) => (
               <div className="uploaded-product-tile" key={image.id || image.url || index}>
                 <button
@@ -82,12 +95,13 @@ export default function ProductImageUploader({
                 <Input
                   size="small"
                   value={image.alt}
-                  placeholder="Add alt text"
+                  placeholder="Product image label"
                   onChange={(event) => onAltChange(index, event.target.value)}
                 />
               </div>
             ))}
-          </div>
+            </div>
+          </>
         ) : (
           <div className="uploaded-product-empty">
             <Empty description="No image uploaded. Placeholder will be used." />

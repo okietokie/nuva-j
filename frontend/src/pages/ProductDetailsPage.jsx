@@ -1,18 +1,34 @@
 import { Button, Card, Col, Descriptions, InputNumber, Row, Tag } from "antd";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { getProduct } from "../services/productService";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
 
 export default function ProductDetailsPage() {
   const { productSlug } = useParams();
+  const location = useLocation();
   const [product, setProduct] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const { addToCart } = useCart();
+  const { isAdmin } = useAuth();
 
   useEffect(() => {
-    getProduct(productSlug).then(setProduct);
-  }, [productSlug]);
+    const previewId = new URLSearchParams(location.search).get("preview");
+    const requestProduct = async () => {
+      try {
+        const nextProduct =
+          previewId && isAdmin
+            ? await getProduct(previewId, { admin: true })
+            : await getProduct(productSlug);
+        setProduct(nextProduct);
+      } catch (error) {
+        setProduct(null);
+      }
+    };
+
+    requestProduct();
+  }, [isAdmin, location.search, productSlug]);
 
   if (!product) {
     return null;

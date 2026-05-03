@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Card, Empty, Modal, Space, message } from "antd";
+import { Button, Card, Empty, Modal, Spin, message } from "antd";
 import {
   AppstoreOutlined,
   BoxPlotOutlined,
+  DeleteOutlined,
+  FileTextOutlined,
+  InboxOutlined,
   PlusOutlined,
   ProfileOutlined,
+  RightOutlined,
+  TagOutlined,
   WarningOutlined
 } from "@ant-design/icons";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -12,6 +17,7 @@ import { useAuth } from "../../context/AuthContext";
 import { getCategories } from "../../services/categoryService";
 import {
   createProductFromImage,
+  deleteOrphanedProductImage,
   deleteProduct,
   duplicateProduct,
   getOrphanedProductImages,
@@ -101,8 +107,11 @@ export default function AdminProductsPage() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [orphanImages, setOrphanImages] = useState([]);
+  const [pendingOrphanDelete, setPendingOrphanDelete] = useState(null);
+  const [deletingOrphanKey, setDeletingOrphanKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [orphanLoading, setOrphanLoading] = useState(false);
+  const [orphanSectionExpanded, setOrphanSectionExpanded] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState(defaultFilters);
   const [filters, setFilters] = useState(defaultFilters);
@@ -203,7 +212,7 @@ export default function AdminProductsPage() {
   };
 
   const handleViewProduct = (product) => {
-    navigate(`/products/${product.slug || product._id}`);
+    navigate(`/products/${product.slug || product._id}?preview=${product._id}`);
   };
 
   const handleCreateDraftFromImage = async (image) => {
@@ -276,6 +285,37 @@ export default function AdminProductsPage() {
     message.success("Catalog refreshed from products and uploaded media.");
   };
 
+  const handleDeleteOrphanImage = (image) => {
+    if (!canDelete) {
+      message.error("You do not have permission to delete this draft image.");
+      return;
+    }
+
+    setPendingOrphanDelete(image);
+  };
+
+  const confirmDeleteOrphanImage = () => {
+    if (!pendingOrphanDelete) {
+      return;
+    }
+
+    setDeletingOrphanKey(pendingOrphanDelete.key);
+    deleteOrphanedProductImage(pendingOrphanDelete.key)
+      .then(() => {
+        setOrphanImages((current) =>
+          current.filter((entry) => entry.key !== pendingOrphanDelete.key)
+        );
+        message.success("Draft image deleted.");
+        setPendingOrphanDelete(null);
+      })
+      .catch((error) => {
+        message.error(getApiErrorMessage(error, "Image delete failed."));
+      })
+      .finally(() => {
+        setDeletingOrphanKey("");
+      });
+  };
+
   return (
     <div className="catalog-admin-page">
       <Card className="nuva-card catalog-shell-card">
@@ -326,32 +366,71 @@ export default function AdminProductsPage() {
 
       {(orphanLoading || orphanImages.length > 0) && (
         <Card
-          title="Images Awaiting Product Details"
+          title={`Images Awaiting Product Details (${orphanImages.length})`}
           className="nuva-card catalog-orphan-card"
-          loading={orphanLoading}
+          extra={
+            <Button type="text" onClick={() => setOrphanSectionExpanded((current) => !current)}>
+              {orphanSectionExpanded ? "Hide" : "Show"}
+            </Button>
+          }
         >
-          <div className="catalog-orphan-grid">
-            {orphanImages.map((image) => (
-              <div className="catalog-orphan-tile" key={image.key}>
-                <img src={image.url} alt="Existing Backblaze B2 upload" />
-                <div className="catalog-orphan-copy">
-                  <strong>Untitled Product</strong>
-                  <span>No category</span>
-                  <span>Price not set</span>
-                  <span>Stock not added</span>
-                  <ProductStatusBadge type="status" value="draft" />
-                  <Button
-                    type="primary"
-                    size="small"
-                    disabled={!canCreate}
-                    onClick={() => handleCreateDraftFromImage(image)}
-                  >
-                    Complete Product Details
-                  </Button>
-                </div>
+          {orphanSectionExpanded ? (
+            orphanLoading ? (
+              <div className="catalog-orphan-loading">
+                <Spin />
               </div>
-            ))}
-          </div>
+            ) : (
+              <div className="catalog-orphan-grid">
+                {orphanImages.map((image) => (
+                  <div className="catalog-orphan-tile" key={image.key}>
+                <button
+                  type="button"
+                  className="catalog-orphan-delete"
+                  aria-label="Delete draft image"
+                  aria-busy={deletingOrphanKey === image.key}
+                  disabled={deletingOrphanKey === image.key}
+                  onClick={() => handleDeleteOrphanImage(image)}
+                >
+                  <DeleteOutlined />
+                </button>
+                    <div className="catalog-orphan-image-wrap">
+                      <img src={image.url} alt="Existing Backblaze B2 upload" />
+                    </div>
+                    <div className="catalog-orphan-copy">
+                      <strong>Untitled Product</strong>
+                      <div className="catalog-orphan-meta">
+                        <span>
+                          <TagOutlined />
+                          No category
+                        </span>
+                        <span>
+                          <TagOutlined />
+                          Price not set
+                        </span>
+                        <span>
+                          <InboxOutlined />
+                          Stock not added
+                        </span>
+                      </div>
+                      <div className="catalog-orphan-status">
+                        <FileTextOutlined />
+                        <span>Draft</span>
+                      </div>
+                      <Button
+                        type="primary"
+                        className="catalog-orphan-cta"
+                        disabled={!canCreate}
+                        onClick={() => handleCreateDraftFromImage(image)}
+                      >
+                        <span>Complete Product Details</span>
+                        <RightOutlined />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : null}
         </Card>
       )}
 
@@ -398,6 +477,25 @@ export default function AdminProductsPage() {
           closeDrawer();
         }}
       />
+
+      <Modal
+        open={Boolean(pendingOrphanDelete)}
+        title="Delete this image?"
+        okText="Delete"
+        cancelText="Cancel"
+        okButtonProps={{ danger: true, loading: deletingOrphanKey === pendingOrphanDelete?.key }}
+        onOk={confirmDeleteOrphanImage}
+        onCancel={() => {
+          if (!deletingOrphanKey) {
+            setPendingOrphanDelete(null);
+          }
+        }}
+      >
+        <p>
+          This will permanently remove the image from “Images Awaiting Product Details” and clean up
+          its backend record as well.
+        </p>
+      </Modal>
     </div>
   );
 }

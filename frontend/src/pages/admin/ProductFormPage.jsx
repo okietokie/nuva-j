@@ -239,11 +239,6 @@ export default function ProductFormPage() {
             </Form.Item>
           </Col>
           <Col xs={24} md={8}>
-            <Form.Item label="Sale Price" name="salePrice">
-              <InputNumber min={0} style={{ width: "100%" }} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={8}>
             <Form.Item label="Currency" name="currency" rules={[{ required: true }]}>
               <Select options={[{ value: "AED", label: "AED" }]} />
             </Form.Item>
@@ -416,12 +411,6 @@ export default function ProductFormPage() {
           </Form.Item>
           <Form.Item name="isBestSeller" valuePropName="checked" noStyle>
             <Checkbox>Best Seller</Checkbox>
-          </Form.Item>
-          <Form.Item noStyle shouldUpdate>
-            {() => {
-              const salePrice = form.getFieldValue("salePrice");
-              return <Checkbox checked={salePrice != null && salePrice !== undefined} disabled>Sale Item</Checkbox>;
-            }}
           </Form.Item>
         </Space>
 

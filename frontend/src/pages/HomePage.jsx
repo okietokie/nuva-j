@@ -3,17 +3,50 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import ProductGrid from "../components/ProductGrid";
 import { useCart } from "../context/CartContext";
+import { getCategories } from "../services/categoryService";
 import { getProducts } from "../services/productService";
 
 export default function HomePage() {
   const [products, setProducts] = useState([]);
+  const [categoryCount, setCategoryCount] = useState(0);
   const { addToCart } = useCart();
 
   useEffect(() => {
-    getProducts().then(setProducts);
+    let isMounted = true;
+
+    async function loadHomeData() {
+      const [productResults, categoryResults] = await Promise.allSettled([
+        getProducts(),
+        getCategories()
+      ]);
+
+      if (!isMounted) {
+        return;
+      }
+
+      if (productResults.status === "fulfilled") {
+        setProducts(productResults.value);
+      } else {
+        setProducts([]);
+      }
+
+      if (categoryResults.status === "fulfilled") {
+        setCategoryCount(Array.isArray(categoryResults.value) ? categoryResults.value.length : 0);
+      } else {
+        setCategoryCount(0);
+      }
+    }
+
+    loadHomeData();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const featured = products.filter((product) => product.isFeatured).slice(0, 4);
+  const featuredCount = products.filter((product) => product.isFeatured).length;
+  const inStockCount = products.filter((product) => product.stock > 0).length;
 
   return (
     <div className="page-wrap">
@@ -47,17 +80,20 @@ export default function HomePage() {
       <Row gutter={[24, 24]} className="stats-row">
         <Col xs={24} md={8}>
           <Card className="nuva-card">
-            <Statistic title="Signature pieces" value={48} />
+            <Statistic title="Available pieces" value={products.length} />
           </Card>
         </Col>
         <Col xs={24} md={8}>
           <Card className="nuva-card">
-            <Statistic title="Happy collectors" value={1260} />
+            <Statistic title="Featured designs" value={featuredCount} />
           </Card>
         </Col>
         <Col xs={24} md={8}>
           <Card className="nuva-card">
-            <Statistic title="Average rating" value={4.9} suffix="/5" />
+            <Statistic
+              title={categoryCount > 0 ? "Active collections" : "Ready to ship"}
+              value={categoryCount > 0 ? categoryCount : inStockCount}
+            />
           </Card>
         </Col>
       </Row>

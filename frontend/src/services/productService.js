@@ -35,13 +35,15 @@ export const getProduct = async (productId, options = {}) => {
     const response = await api.get(endpoint);
     return normalizeProduct(response.data);
   } catch (error) {
-    return normalizeProduct(
-      mockProducts.find(
-        (product) =>
-          product._id === productId || product.id === productId || product.slug === productId
-      ) ||
-        mockProducts[0]
+    const fallback = mockProducts.find(
+      (product) => product._id === productId || product.id === productId || product.slug === productId
     );
+
+    if (fallback) {
+      return normalizeProduct(fallback);
+    }
+
+    throw error;
   }
 };
 
@@ -95,6 +97,13 @@ export const uploadProductImage = async (file) => {
 
 export const getOrphanedProductImages = async () => {
   const response = await api.get("/uploads/product-images/orphaned");
+  return response.data;
+};
+
+export const deleteOrphanedProductImage = async (key) => {
+  const response = await api.delete("/uploads/product-images/orphaned", {
+    data: { key }
+  });
   return response.data;
 };
 

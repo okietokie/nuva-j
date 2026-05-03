@@ -77,3 +77,12 @@ async def list_product_images_from_b2(prefix: str | None = None) -> list[dict]:
         for item in contents
         if item.get("Key") and not item["Key"].endswith("/")
     ]
+
+
+async def delete_image_from_b2(key: str) -> None:
+    client = get_b2_client()
+    try:
+        client.delete_object(Bucket=settings.b2_bucket_name, Key=key)
+    except (ClientError, BotoCoreError) as error:
+        logger.warning("Unable to delete product image from Backblaze B2: %s", error)
+        raise
