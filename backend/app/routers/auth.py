@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -15,7 +16,9 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 async def register(payload: RegisterRequest):
     db = get_database()
-    existing_user = await db.users.find_one({"email": payload.email})
+    existing_user = await db.users.find_one(
+        {"email": {"$regex": f"^{re.escape(payload.email)}$", "$options": "i"}}
+    )
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered.")
 
@@ -42,7 +45,9 @@ async def register(payload: RegisterRequest):
 @router.post("/login", response_model=AuthResponse)
 async def login(payload: LoginRequest):
     db = get_database()
-    user = await db.users.find_one({"email": payload.email})
+    user = await db.users.find_one(
+        {"email": {"$regex": f"^{re.escape(payload.email)}$", "$options": "i"}}
+    )
     password_hash = user.get("passwordHash") if user else None
     if user and not password_hash:
         password_hash = user.get("password")

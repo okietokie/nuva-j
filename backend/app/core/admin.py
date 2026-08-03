@@ -1,4 +1,6 @@
 ALL_ADMIN_PERMISSIONS = [
+    "purchases.read",
+    "purchases.manage",
     "products.read",
     "products.create",
     "products.update",
@@ -13,11 +15,13 @@ ALL_ADMIN_PERMISSIONS = [
 
 ADMIN_PERMISSION_PROFILES = {
     "viewer": [
+        "purchases.read",
         "products.read",
         "categories.read",
         "orders.read",
     ],
     "catalog_admin": [
+        "purchases.read",
         "products.read",
         "products.create",
         "products.update",
@@ -27,6 +31,8 @@ ADMIN_PERMISSION_PROFILES = {
         "orders.update",
     ],
     "inventory_admin": [
+        "purchases.read",
+        "purchases.manage",
         "products.read",
         "categories.read",
         "inventory.update",

@@ -4,6 +4,7 @@ import { useLocation, useParams } from "react-router-dom";
 import { getProduct } from "../services/productService";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
+import { useCurrency } from "../context/CurrencyContext";
 
 export default function ProductDetailsPage() {
   const { productSlug } = useParams();
@@ -12,6 +13,7 @@ export default function ProductDetailsPage() {
   const [quantity, setQuantity] = useState(1);
   const { addToCart } = useCart();
   const { isAdmin } = useAuth();
+  const { formatMoney } = useCurrency();
 
   useEffect(() => {
     const previewId = new URLSearchParams(location.search).get("preview");
@@ -50,7 +52,7 @@ export default function ProductDetailsPage() {
           <span className="eyebrow">{product.displayCategory}</span>
           <h1>{product.displayName}</h1>
           <p className="lead-copy">{product.description}</p>
-          <div className="price-line">{product.displayPriceLabel}</div>
+          <div className="price-line">{formatMoney(product.price, product.currency || "AED")}</div>
           <div className="tag-row">
             <Tag color="gold">{product.material || "Material not set"}</Tag>
             <Tag color="brown">{product.color || "Color not set"}</Tag>

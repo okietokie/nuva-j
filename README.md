@@ -71,7 +71,7 @@ npm install
 npm run dev
 ```
 
-Copy `frontend/.env.example` to `frontend/.env` and set:
+Set values in `frontend/.env`:
 
 - `VITE_API_BASE_URL`
 
@@ -85,7 +85,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Copy `backend/.env.example` to `backend/.env` and set:
+Set values in `backend/.env`:
 
 - MongoDB Atlas connection string
 - JWT secret
@@ -97,7 +97,7 @@ Copy `backend/.env.example` to `backend/.env` and set:
 - Deploy `frontend/` to Vercel
 - Deploy `backend/` to Render
 - In Vercel, set `VITE_API_BASE_URL` to your Render API URL
-- In Render, add all backend environment variables from `.env.example`
+- In Render, add all backend environment variables from `backend/.env.example`
 - Point your Cloudflare CDN hostname to the Backblaze B2 bucket origin
 
 ### Render backend setup

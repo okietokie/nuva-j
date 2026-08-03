@@ -6,17 +6,19 @@ import router from "./router";
 import theme from "./theme";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
+import { CurrencyProvider } from "./context/CurrencyContext";
 import "./styles/global.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ConfigProvider theme={theme}>
-      <AuthProvider>
-        <CartProvider>
-          
-          <RouterProvider router={router} />
-        </CartProvider>
-      </AuthProvider>
+      <CurrencyProvider>
+        <AuthProvider>
+          <CartProvider>
+            <RouterProvider router={router} />
+          </CartProvider>
+        </AuthProvider>
+      </CurrencyProvider>
     </ConfigProvider>
   </React.StrictMode>
 );

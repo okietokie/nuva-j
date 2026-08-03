@@ -1,9 +1,11 @@
 const BADGE_STYLES = {
   status: {
-    active: { label: "Active", tone: "success" },
     draft: { label: "Draft", tone: "warning" },
+    image_pending: { label: "Image Pending", tone: "amber" },
+    ready_to_publish: { label: "Ready to Publish", tone: "ink" },
+    published: { label: "Published", tone: "success" },
     archived: { label: "Archived", tone: "neutral" },
-    deleted: { label: "Deleted", tone: "danger" }
+    deleted: { label: "Archived", tone: "danger" }
   },
   visibility: {
     visible: { label: "Visible", tone: "soft" },

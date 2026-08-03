@@ -1,7 +1,21 @@
 import { Card, Col, Row, Space, Typography } from "antd";
+import AdminKpiSection from "../../components/admin/AdminKpiSection";
 
-function toneClass(tone) {
-  return `admin-stat-icon admin-stat-icon-${tone}`;
+function mapDashboardTone(tone) {
+  if (tone === "green" || tone === "mint" || tone === "teal") {
+    return "active";
+  }
+  if (tone === "amber") {
+    return "low";
+  }
+  if (tone === "gold" || tone === "cyan" || tone === "violet") {
+    return "total";
+  }
+  return "total";
+}
+
+function highlightToneClass(tone) {
+  return `admin-highlight-card admin-highlight-card-${tone}`;
 }
 
 export default function AdminDashboardPage({ section }) {
@@ -9,20 +23,30 @@ export default function AdminDashboardPage({ section }) {
     <div className="admin-dashboard-page">
       <div className="admin-page-head">
         <div>
+          <Typography.Text className="eyebrow">NUVA Business Overview</Typography.Text>
           <Typography.Title level={2}>{section.dashboard.title}</Typography.Title>
           <Typography.Paragraph>{section.dashboard.subtitle}</Typography.Paragraph>
         </div>
-        <Card className="admin-date-chip">May 20 - May 26, 2024</Card>
       </div>
 
-      <Row gutter={[18, 18]} className="admin-stats-row">
-        {section.dashboard.stats.map((stat) => (
-          <Col xs={24} sm={12} xl={6} key={stat.label}>
-            <Card className="nuva-card admin-stat-card">
-              <div className={toneClass(stat.tone)} />
-              <Typography.Text className="admin-stat-label">{stat.label}</Typography.Text>
-              <Typography.Title level={3}>{stat.value}</Typography.Title>
-              <Typography.Paragraph className="admin-stat-note">{stat.note}</Typography.Paragraph>
+      <AdminKpiSection
+        title="Business Snapshot"
+        items={section.dashboard.stats.map((stat) => ({
+          key: stat.label,
+          label: stat.label,
+          value: stat.value,
+          note: stat.note,
+          tone: mapDashboardTone(stat.tone),
+        }))}
+      />
+
+      <Row gutter={[18, 18]} className="admin-highlights-row">
+        {section.dashboard.highlights.map((highlight) => (
+          <Col xs={24} lg={8} key={highlight.title}>
+            <Card className={`nuva-card ${highlightToneClass(highlight.tone)}`}>
+              <Typography.Text className="admin-highlight-label">{highlight.title}</Typography.Text>
+              <Typography.Title level={3}>{highlight.value}</Typography.Title>
+              <Typography.Paragraph>{highlight.note}</Typography.Paragraph>
             </Card>
           </Col>
         ))}
@@ -30,7 +54,7 @@ export default function AdminDashboardPage({ section }) {
 
       <Row gutter={[18, 18]}>
         {section.dashboard.panels.map((panel) => (
-          <Col xs={24} lg={12} key={panel.title}>
+          <Col xs={24} xl={12} key={panel.title}>
             <Card
               className="nuva-card admin-data-card"
               title={panel.title}

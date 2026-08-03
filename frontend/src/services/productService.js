@@ -52,6 +52,11 @@ export const createProduct = async (payload) => {
   return normalizeProduct(response.data);
 };
 
+export const previewProductSku = async (params) => {
+  const response = await api.get("/admin/products/sku-preview", { params });
+  return response.data;
+};
+
 export const createProductFromImage = async (payload) => {
   const response = await api.post("/admin/products/from-image", payload);
   return normalizeProduct(response.data);
@@ -82,6 +87,11 @@ export const deleteProduct = async (productId) => {
   return response.data;
 };
 
+export const bulkDeleteProducts = async (productIds) => {
+  const response = await api.post("/admin/products/bulk-delete", { productIds });
+  return response.data;
+};
+
 export const uploadProductImage = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
@@ -107,7 +117,9 @@ export const deleteOrphanedProductImage = async (key) => {
   return response.data;
 };
 
-export const updateStock = async (productId, stock) => {
-  const response = await api.patch(`/products/${productId}/stock`, { stock });
+export const updateStock = async (productId, stockOrPayload) => {
+  const payload =
+    typeof stockOrPayload === "number" ? { stock: stockOrPayload } : stockOrPayload;
+  const response = await api.patch(`/products/${productId}/stock`, payload);
   return normalizeProduct(response.data);
 };

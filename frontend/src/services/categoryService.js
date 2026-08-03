@@ -26,7 +26,38 @@ export const deleteCategory = async (categoryId) => {
   return response.data;
 };
 
+export const bulkDeleteCategories = async (ids) => {
+  const response = await api.post("/admin/categories/bulk-delete", { ids });
+  return response.data;
+};
+
 export const getProductLabels = async () => {
   const response = await api.get("/categories/labels");
+  return response.data;
+};
+
+export const getVariantCodes = async (options = {}) => {
+  const endpoint = options.admin ? "/admin/categories/variant-codes" : "/categories/variant-codes";
+  const response = await api.get(endpoint);
+  return response.data;
+};
+
+export const createVariantCode = async (payload) => {
+  const response = await api.post("/admin/categories/variant-codes", payload);
+  return response.data;
+};
+
+export const updateVariantCode = async (variantCodeId, payload) => {
+  const response = await api.put(`/admin/categories/variant-codes/${variantCodeId}`, payload);
+  return response.data;
+};
+
+export const deleteVariantCode = async (variantCodeId) => {
+  const response = await api.delete(`/admin/categories/variant-codes/${variantCodeId}`);
+  return response.data;
+};
+
+export const bulkDeleteVariantCodes = async (ids) => {
+  const response = await api.post("/admin/categories/variant-codes/bulk-delete", { ids });
   return response.data;
 };

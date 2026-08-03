@@ -1,3 +1,5 @@
+import re
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
@@ -20,7 +22,9 @@ async def get_current_user(
         )
 
     db = get_database()
-    user = await db.users.find_one({"email": payload["sub"]})
+    user = await db.users.find_one(
+        {"email": {"$regex": f"^{re.escape(payload['sub'])}$", "$options": "i"}}
+    )
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

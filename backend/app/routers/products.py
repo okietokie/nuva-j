@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.db.mongodb import get_database
 from app.dependencies.auth import require_admin, require_permission
+from app.core.sku import build_sku_details
 from app.schemas.product import ProductCreate, ProductFromImageCreate, ProductUpdate, StockUpdate
 from app.utils.serializers import serialize_document, serialize_many
 
@@ -30,6 +31,29 @@ def maybe_object_id(value: str | None) -> ObjectId | None:
     return None
 
 
+def build_stock_movement(
+    *,
+    movement_type: str,
+    previous_stock: int,
+    new_stock: int,
+    actor_id: str | None = None,
+    actor_name: str | None = None,
+    note: str | None = None,
+    order_id: str | None = None,
+) -> dict:
+    return {
+        "type": movement_type,
+        "previousStock": max(0, int(previous_stock)),
+        "newStock": max(0, int(new_stock)),
+        "quantityChange": int(new_stock) - int(previous_stock),
+        "note": (note or "").strip() or None,
+        "actorId": actor_id,
+        "actorName": actor_name,
+        "orderId": order_id,
+        "createdAt": datetime.now(timezone.utc),
+    }
+
+
 def normalize_product_payload(payload: dict) -> dict:
     name = (payload.get("name") or "").strip()
     if name:
@@ -37,10 +61,29 @@ def normalize_product_payload(payload: dict) -> dict:
 
     payload["slug"] = slugify(payload.get("slug") or payload["name"])
     payload["categoryName"] = (payload.get("categoryName") or "").strip()
-    payload["currency"] = payload.get("currency", "AED").upper()
+    payload["categoryCode"] = (payload.get("categoryCode") or "").strip().upper()
+    payload["currency"] = payload.get("currency", "INR").upper()
     payload["sku"] = (payload.get("sku") or "").strip().upper()
+    payload["normalizedSku"] = payload["sku"] or None
+    payload["supplierId"] = (payload.get("supplierId") or "").strip() or None
+    payload["supplierName"] = (payload.get("supplierName") or "").strip()
+    payload["purchaseBatchId"] = (payload.get("purchaseBatchId") or "").strip() or None
+    payload["packagingProfileId"] = (payload.get("packagingProfileId") or "").strip()
+    payload["packagingProfileLabel"] = (payload.get("packagingProfileLabel") or "").strip()
     payload["material"] = (payload.get("material") or "").strip()
     payload["color"] = (payload.get("color") or "").strip()
+    payload["variantName"] = (payload.get("variantName") or "").strip() or None
+    payload["variantCode"] = (payload.get("variantCode") or "").strip().upper() or None
+    payload["designNumber"] = max(0, int(payload.get("designNumber") or 0))
+    payload["quantityPurchased"] = max(0, int(payload.get("quantityPurchased") or 0))
+    payload["stockMovements"] = payload.get("stockMovements", [])
+    payload["purchaseUnitCost"] = max(0, float(payload.get("purchaseUnitCost") or 0))
+    payload["purchaseTotalCost"] = max(0, float(payload.get("purchaseTotalCost") or 0))
+    payload["directProductExpense"] = max(0, float(payload.get("directProductExpense") or 0))
+    payload["allocatedBatchExpense"] = max(0, float(payload.get("allocatedBatchExpense") or 0))
+    payload["packagingCost"] = max(0, float(payload.get("packagingCost") or 0))
+    payload["totalProductCost"] = max(0, float(payload.get("totalProductCost") or 0))
+    payload["suggestedSellingPrice"] = max(0, float(payload.get("suggestedSellingPrice") or 0))
 
     for key in ("size", "weight", "plating", "stoneType", "occasion", "careInstructions"):
         if payload.get(key):
@@ -90,24 +133,54 @@ def normalize_product_updates(updates: dict) -> dict:
     if "categoryName" in normalized and normalized["categoryName"]:
         normalized["categoryName"] = normalized["categoryName"].strip()
 
+    if "categoryCode" in normalized and normalized["categoryCode"]:
+        normalized["categoryCode"] = normalized["categoryCode"].strip().upper()
+
     if "currency" in normalized and normalized["currency"]:
         normalized["currency"] = normalized["currency"].upper()
 
     if "sku" in normalized and normalized["sku"]:
         normalized["sku"] = normalized["sku"].strip().upper()
+        normalized["normalizedSku"] = normalized["sku"]
+    elif "sku" in normalized and not normalized["sku"]:
+        normalized["normalizedSku"] = None
+
+    for key in ("supplierId", "purchaseBatchId"):
+        if key in normalized:
+            normalized[key] = (normalized[key] or "").strip() or None
+
+    for key in ("supplierName", "packagingProfileId", "packagingProfileLabel"):
+        if key in normalized and isinstance(normalized[key], str):
+            normalized[key] = normalized[key].strip()
 
     for key in (
         "material",
         "color",
         "size",
+        "variantName",
+        "variantCode",
         "weight",
         "plating",
         "stoneType",
         "occasion",
-        "careInstructions",
+            "careInstructions",
     ):
         if key in normalized and isinstance(normalized[key], str):
             normalized[key] = normalized[key].strip()
+
+    for key in (
+        "quantityPurchased",
+        "purchaseUnitCost",
+        "purchaseTotalCost",
+        "directProductExpense",
+        "allocatedBatchExpense",
+        "packagingCost",
+        "totalProductCost",
+        "suggestedSellingPrice",
+    ):
+        if key in normalized and normalized[key] is not None:
+            numeric_value = float(normalized[key])
+            normalized[key] = int(numeric_value) if key == "quantityPurchased" else numeric_value
 
     if "tags" in normalized:
         normalized["tags"] = sorted(
@@ -152,6 +225,7 @@ async def attach_category_details(db, payload: dict) -> dict:
 
     payload["categoryId"] = str(category["_id"])
     payload["categoryName"] = category["name"]
+    payload["categoryCode"] = category.get("code", "")
     return payload
 
 
@@ -165,9 +239,10 @@ def build_image_only_product(payload: ProductFromImageCreate) -> dict:
             "description": "",
             "categoryId": "",
             "categoryName": "",
+            "categoryCode": "",
             "price": 0,
             "salePrice": None,
-            "currency": "AED",
+            "currency": "INR",
             "images": [
                 {
                     "url": payload.imageUrl,
@@ -186,6 +261,8 @@ def build_image_only_product(payload: ProductFromImageCreate) -> dict:
             "stoneType": None,
             "color": "",
             "size": None,
+            "variantName": None,
+            "variantCode": None,
             "weight": None,
             "occasion": None,
             "careInstructions": None,
@@ -217,7 +294,7 @@ async def ensure_unique_product_fields(
 
     sku = (payload.get("sku") or "").strip()
     if sku:
-        sku_filter = {"sku": sku}
+        sku_filter = {"normalizedSku": sku.upper()}
         if exclude_filter:
             sku_filter["_id"] = exclude_filter
         existing_sku = await db.products.find_one(sku_filter)
@@ -307,6 +384,8 @@ async def admin_create_product(
     now = datetime.now(timezone.utc)
     product_data = normalize_product_payload(payload.model_dump())
     product_data = await attach_category_details(db, product_data)
+    if product_data.get("categoryId"):
+        product_data.update(await build_sku_details(db, product_data, reserve_number=True))
     product_data = normalize_status_visibility(product_data)
     validate_visibility_rules(product_data)
     await ensure_unique_product_fields(db, product_data)
@@ -408,17 +487,36 @@ async def admin_update_stock(
 ):
     db = get_database()
     object_id = to_object_id(product_id)
+    product = await db.products.find_one({"_id": object_id})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found.")
+
+    previous_stock = int(product.get("stock", 0))
+    next_stock = int(payload.stock)
+    movement = build_stock_movement(
+        movement_type=payload.movementType,
+        previous_stock=previous_stock,
+        new_stock=next_stock,
+        actor_id=_admin.get("id"),
+        actor_name=_admin.get("email") or _admin.get("name"),
+        note=payload.note,
+    )
+
     await db.products.update_one(
         {"_id": object_id},
         {
+            "$push": {
+                "stockMovements": {
+                    "$each": [movement],
+                    "$slice": -20,
+                }
+            },
             "$set": {
-                "stock": payload.stock,
+                "stock": next_stock,
                 "updatedAt": datetime.now(timezone.utc),
                 "updatedBy": maybe_object_id(_admin.get("id")),
             }
         },
     )
     product = await db.products.find_one({"_id": object_id})
-    if not product:
-        raise HTTPException(status_code=404, detail="Product not found.")
     return serialize_document(product)

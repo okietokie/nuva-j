@@ -8,6 +8,7 @@ import {
   EyeOutlined,
   InboxOutlined
 } from "@ant-design/icons";
+import { useCurrency } from "../../../context/CurrencyContext";
 import ProductStatusBadge from "./ProductStatusBadge";
 
 export default function ProductCard({
@@ -20,6 +21,7 @@ export default function ProductCard({
   onToggleArchive,
   onDelete
 }) {
+  const { formatMoney } = useCurrency();
   const labels = [];
   if (product.isBestSeller) labels.push("bestseller");
   if (product.isNewArrival) labels.push("new");
@@ -33,15 +35,15 @@ export default function ProductCard({
         <span className="catalog-mini-category">{product.displayCategory}</span>
         <h4>{product.displayName}</h4>
         <div className="catalog-price-stack">
-          <strong>{product.displayPriceLabel}</strong>
-          {product.hasSale ? <span>AED {product.price}</span> : null}
+          <strong>{formatMoney(product.price, product.currency || "AED")}</strong>
+          {product.hasSale ? <span>{formatMoney(product.price, product.currency || "AED")}</span> : null}
         </div>
         <div className="catalog-stock-copy">
           <span>{product.stockStatus}</span>
           <span>({product.stock})</span>
         </div>
         <div className="catalog-badge-row">
-          <ProductStatusBadge type="status" value={product.status} />
+          <ProductStatusBadge type="status" value={product.workflowStatus} />
           <ProductStatusBadge type="visibility" value={product.visibility} />
           {labels.slice(0, 2).map((label) => (
             <ProductStatusBadge key={label} type="label" value={label} />
@@ -71,7 +73,7 @@ export default function ProductCard({
               {
                 key: "archive",
                 icon: <InboxOutlined />,
-                label: product.status === "archived" ? "Unarchive Product" : "Archive Product",
+                label: product.workflowStatus === "archived" ? "Unarchive Product" : "Archive Product",
                 disabled: !permissions.canDelete,
                 onClick: () => onToggleArchive(product)
               },

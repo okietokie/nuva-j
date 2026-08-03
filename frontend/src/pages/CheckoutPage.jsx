@@ -3,22 +3,26 @@ import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { createOrder } from "../services/orderService";
 import { useAuth } from "../context/AuthContext";
+import { useCurrency } from "../context/CurrencyContext";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
-  const { items, totals, clearCart } = useCart();
+  const { items, totals, baseTotals, clearCart } = useCart();
   const { user } = useAuth();
+  const { convertAmount, formatMoney } = useCurrency();
 
   const handleSubmit = async (values) => {
     const payload = {
       items: items.map((item) => ({
         productId: item._id,
         name: item.name,
-        price: item.displayPrice ?? item.price,
+        price: convertAmount(item.displayPrice ?? item.price, item.currency || "AED", "AED"),
+        currency: "AED",
         quantity: item.quantity,
         image: item.primaryImage
       })),
-      totalAmount: totals.total,
+      totalAmount: baseTotals.total,
+      currency: "AED",
       address: values,
       paymentMethod: values.paymentMethod,
       paymentStatus: "pending",
@@ -100,16 +104,21 @@ export default function CheckoutPage() {
                 <span>
                   {item.name} x {item.quantity}
                 </span>
-                <strong>AED {(item.displayPrice ?? item.price) * item.quantity}</strong>
+                <strong>
+                  {formatMoney(
+                    convertAmount(item.displayPrice ?? item.price, item.currency || "AED") *
+                      item.quantity,
+                  )}
+                </strong>
               </div>
             ))}
             <div className="summary-row">
               <span>Shipping</span>
-              <strong>AED {totals.shipping}</strong>
+              <strong>{formatMoney(totals.shipping)}</strong>
             </div>
             <div className="summary-row summary-total">
               <span>Total</span>
-              <strong>AED {totals.total}</strong>
+              <strong>{formatMoney(totals.total)}</strong>
             </div>
           </Card>
         </Col>

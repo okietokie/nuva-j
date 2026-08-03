@@ -1,6 +1,7 @@
 import { Layout, Menu, Button, Space } from "antd";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import CartDrawer from "../components/CartDrawer";
+import CurrencySwitcher from "../components/CurrencySwitcher";
 import { useAuth } from "../context/AuthContext";
 
 const { Header, Content, Footer } = Layout;
@@ -30,6 +31,7 @@ export default function PublicLayout() {
           className="nuva-menu"
         />
         <Space size="middle">
+          <CurrencySwitcher />
           {isAdmin ? (
             <Link to="/admin">
               <Button>Admin</Button>

@@ -6,6 +6,26 @@ from pydantic import BaseModel, Field, model_validator
 
 ProductStatus = Literal["active", "draft", "archived", "deleted"]
 ProductVisibility = Literal["visible", "hidden"]
+StockMovementType = Literal[
+    "manual_adjustment",
+    "restock",
+    "damage",
+    "return",
+    "sale_correction",
+    "order_placed",
+]
+
+
+class StockMovement(BaseModel):
+    type: StockMovementType
+    previousStock: int = Field(ge=0)
+    newStock: int = Field(ge=0)
+    quantityChange: int
+    note: str | None = Field(default=None, max_length=240)
+    actorId: str | None = None
+    actorName: str | None = None
+    orderId: str | None = None
+    createdAt: datetime
 
 
 class ProductImage(BaseModel):
@@ -22,13 +42,30 @@ class ProductBase(BaseModel):
     description: str = ""
     categoryId: str | None = None
     categoryName: str = ""
+    categoryCode: str = ""
+    designNumber: int = Field(default=0, ge=0)
     price: float = Field(ge=0)
     salePrice: float | None = Field(default=None, ge=0)
-    currency: str = Field(default="AED", min_length=3, max_length=3)
+    currency: str = Field(default="INR", min_length=3, max_length=3)
     images: list[ProductImage] = Field(default_factory=list)
     stock: int = Field(ge=0)
     lowStockLimit: int = Field(default=3, ge=0)
+    stockMovements: list[StockMovement] = Field(default_factory=list)
     sku: str = ""
+    supplierId: str | None = None
+    supplierName: str = ""
+    purchaseBatchId: str | None = None
+    purchaseDate: datetime | None = None
+    quantityPurchased: int = Field(default=0, ge=0)
+    purchaseUnitCost: float = Field(default=0, ge=0)
+    purchaseTotalCost: float = Field(default=0, ge=0)
+    directProductExpense: float = Field(default=0, ge=0)
+    allocatedBatchExpense: float = Field(default=0, ge=0)
+    packagingCost: float = Field(default=0, ge=0)
+    packagingProfileId: str = ""
+    packagingProfileLabel: str = ""
+    totalProductCost: float = Field(default=0, ge=0)
+    suggestedSellingPrice: float = Field(default=0, ge=0)
     taxIncluded: bool = True
     allowBackorder: bool = False
     material: str = ""
@@ -36,6 +73,8 @@ class ProductBase(BaseModel):
     stoneType: str | None = Field(default=None, max_length=120)
     color: str = ""
     size: str | None = Field(default=None, max_length=80)
+    variantName: str | None = Field(default=None, max_length=120)
+    variantCode: str | None = Field(default=None, max_length=10)
     weight: str | None = Field(default=None, max_length=40)
     occasion: str | None = Field(default=None, max_length=120)
     careInstructions: str | None = Field(default=None, max_length=1000)
@@ -78,6 +117,8 @@ class ProductUpdate(BaseModel):
     description: str | None = None
     categoryId: str | None = None
     categoryName: str | None = None
+    categoryCode: str | None = None
+    designNumber: int | None = Field(default=None, ge=0)
     price: float | None = Field(default=None, ge=0)
     salePrice: float | None = Field(default=None, ge=0)
     currency: str | None = Field(default=None, min_length=3, max_length=3)
@@ -85,6 +126,20 @@ class ProductUpdate(BaseModel):
     stock: int | None = Field(default=None, ge=0)
     lowStockLimit: int | None = Field(default=None, ge=0)
     sku: str | None = None
+    supplierId: str | None = None
+    supplierName: str | None = None
+    purchaseBatchId: str | None = None
+    purchaseDate: datetime | None = None
+    quantityPurchased: int | None = Field(default=None, ge=0)
+    purchaseUnitCost: float | None = Field(default=None, ge=0)
+    purchaseTotalCost: float | None = Field(default=None, ge=0)
+    directProductExpense: float | None = Field(default=None, ge=0)
+    allocatedBatchExpense: float | None = Field(default=None, ge=0)
+    packagingCost: float | None = Field(default=None, ge=0)
+    packagingProfileId: str | None = Field(default=None, max_length=80)
+    packagingProfileLabel: str | None = Field(default=None, max_length=160)
+    totalProductCost: float | None = Field(default=None, ge=0)
+    suggestedSellingPrice: float | None = Field(default=None, ge=0)
     taxIncluded: bool | None = None
     allowBackorder: bool | None = None
     material: str | None = None
@@ -92,6 +147,8 @@ class ProductUpdate(BaseModel):
     stoneType: str | None = Field(default=None, max_length=120)
     color: str | None = None
     size: str | None = Field(default=None, max_length=80)
+    variantName: str | None = Field(default=None, max_length=120)
+    variantCode: str | None = Field(default=None, max_length=10)
     weight: str | None = Field(default=None, max_length=40)
     occasion: str | None = Field(default=None, max_length=120)
     careInstructions: str | None = Field(default=None, max_length=1000)
@@ -115,12 +172,25 @@ class ProductUpdate(BaseModel):
 
 class StockUpdate(BaseModel):
     stock: int = Field(ge=0)
+    movementType: StockMovementType = "manual_adjustment"
+    note: str | None = Field(default=None, max_length=240)
 
 
 class ProductFromImageCreate(BaseModel):
     imageUrl: str = Field(min_length=1)
     imageKey: str = ""
     imageAlt: str | None = None
+
+
+class ProductBulkDeleteRequest(BaseModel):
+    productIds: list[str] = Field(min_length=1)
+
+
+class ProductDeleteResult(BaseModel):
+    productId: str
+    productName: str | None = None
+    success: bool
+    reason: str | None = None
 
 
 class ProductOut(ProductBase):

@@ -14,9 +14,11 @@ import {
 } from "@ant-design/icons";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import AdminKpiSection from "../../components/admin/AdminKpiSection";
 import { getCategories } from "../../services/categoryService";
 import {
   createProductFromImage,
+  bulkDeleteProducts,
   deleteOrphanedProductImage,
   deleteProduct,
   duplicateProduct,
@@ -30,7 +32,6 @@ import CategoryModal from "../../components/admin/catalog/CategoryModal";
 import ProductFilters from "../../components/admin/catalog/ProductFilters";
 import ProductFormDrawer from "../../components/admin/catalog/ProductFormDrawer";
 import ProductTable from "../../components/admin/catalog/ProductTable";
-import ProductStatusBadge from "../../components/admin/catalog/ProductStatusBadge";
 import "../../styles/adminCatalog.css";
 
 const defaultFilters = {
@@ -45,7 +46,7 @@ function getProductsBasePath(pathname) {
   const segments = pathname.split("/").filter(Boolean);
   const productIndex = segments.indexOf("products");
   if (productIndex === -1) {
-    return "/admin/commerce/products";
+    return "/admin/products";
   }
   return `/${segments.slice(0, productIndex + 1).join("/")}`;
 }
@@ -60,6 +61,9 @@ function matchesStockFilter(product, stock) {
 }
 
 function buildCatalogStats(products) {
+  const outOfStockCount = products.filter((product) => product.stockStatus === "Out of Stock").length;
+  const lowStockCount = products.filter((product) => product.stockStatus === "Low Stock").length;
+
   return [
     {
       key: "total",
@@ -69,34 +73,42 @@ function buildCatalogStats(products) {
       tone: "total"
     },
     {
-      key: "active",
-      label: "Active Products",
-      value: products.filter((product) => product.status === "active").length,
+      key: "published",
+      label: "Published",
+      value: products.filter((product) => product.workflowStatus === "published").length,
       icon: <BoxPlotOutlined />,
       tone: "active"
     },
     {
-      key: "draft",
-      label: "Draft Products",
-      value: products.filter((product) => product.status === "draft").length,
+      key: "ready",
+      label: "Ready to Publish",
+      value: products.filter((product) => product.workflowStatus === "ready_to_publish").length,
       icon: <ProfileOutlined />,
-      tone: "draft"
+      tone: "active"
     },
     {
       key: "out_of_stock",
       label: "Out of Stock",
-      value: products.filter((product) => product.stockStatus === "Out of Stock").length,
+      value: outOfStockCount,
       icon: <WarningOutlined />,
-      tone: "out"
+      tone: outOfStockCount > 0 ? "out" : "total"
     },
     {
       key: "low_stock",
       label: "Low Stock",
-      value: products.filter((product) => product.stockStatus === "Low Stock").length,
+      value: lowStockCount,
       icon: <WarningOutlined />,
-      tone: "low"
+      tone: lowStockCount > 0 ? "low" : "total"
     }
   ];
+}
+
+function getCatalogSummary(products) {
+  return {
+    published: products.filter((product) => product.workflowStatus === "published").length,
+    ready: products.filter((product) => product.workflowStatus === "ready_to_publish").length,
+    imagePending: products.filter((product) => product.workflowStatus === "image_pending").length
+  };
 }
 
 export default function AdminProductsPage() {
@@ -146,7 +158,7 @@ export default function AdminProductsPage() {
       const data = await getOrphanedProductImages();
       setOrphanImages(data);
     } catch (error) {
-      message.error(getApiErrorMessage(error, "Image import preview failed."));
+      message.error(getApiErrorMessage(error, "Media intake preview failed."));
     } finally {
       setOrphanLoading(false);
     }
@@ -171,19 +183,15 @@ export default function AdminProductsPage() {
     return products.filter((product) => {
       const matchesSearch =
         !search ||
-        [
-          product.displayName,
-          product.sku,
-          product.displayCategory,
-          ...(product.tags || [])
-        ]
+        [product.displayName, product.sku, product.displayCategory, ...(product.tags || [])]
           .join(" ")
           .toLowerCase()
           .includes(search);
 
       const matchesCategory =
         filters.category === "all" || product.categoryId === filters.category;
-      const matchesStatus = filters.status === "all" || product.status === filters.status;
+      const matchesStatus =
+        filters.status === "all" || product.workflowStatus === filters.status;
       const matchesVisibility =
         filters.visibility === "all" || product.visibility === filters.visibility;
 
@@ -198,6 +206,7 @@ export default function AdminProductsPage() {
   }, [filters, products]);
 
   const stats = useMemo(() => buildCatalogStats(products), [products]);
+  const summary = useMemo(() => getCatalogSummary(products), [products]);
 
   const closeDrawer = () => {
     navigate(productsBasePath);
@@ -222,7 +231,7 @@ export default function AdminProductsPage() {
         imageKey: image.key,
         imageAlt: "Untitled Product"
       });
-      message.success("Draft product created from uploaded image.");
+      message.success("Product record created in draft mode.");
       await refreshAll();
       navigate(`${productsBasePath}/${product._id}`);
     } catch (error) {
@@ -245,7 +254,7 @@ export default function AdminProductsPage() {
     try {
       const nextVisibility = product.visibility === "visible" ? "hidden" : "visible";
       await updateProductVisibility(product._id, nextVisibility);
-      message.success(`Product is now ${nextVisibility}.`);
+      message.success(`Visibility updated to ${nextVisibility}.`);
       await loadCatalog();
     } catch (error) {
       message.error(getApiErrorMessage(error, "Visibility update failed."));
@@ -254,40 +263,72 @@ export default function AdminProductsPage() {
 
   const handleToggleArchive = async (product) => {
     try {
-      const nextStatus = product.status === "archived" ? "active" : "archived";
+      const nextStatus = product.workflowStatus === "archived" ? "active" : "archived";
       await updateProductStatus(product._id, nextStatus);
-      message.success(`Status updated to ${nextStatus}.`);
+      message.success(`Workflow updated to ${nextStatus}.`);
       await loadCatalog();
     } catch (error) {
       message.error(getApiErrorMessage(error, "Status update failed."));
     }
   };
 
-  const handleDelete = (product) => {
-    Modal.confirm({
-      title: "Move this product to deleted status?",
-      content: "The product stays recoverable in admin, but customers will not see it.",
-      okButtonProps: { danger: true },
-      onOk: async () => {
-        try {
-          await deleteProduct(product._id);
-          message.success("Product moved to deleted status.");
-          await loadCatalog();
-        } catch (error) {
-          message.error(getApiErrorMessage(error, "Delete failed."));
-        }
+  const removeDeletedProductsFromState = async (deletedIds) => {
+    if (!deletedIds.length) {
+      return;
+    }
+
+    setProducts((current) => current.filter((product) => !deletedIds.includes(product._id)));
+    await loadOrphanImages();
+  };
+
+  const handleDeleteSingle = async (product) => {
+    try {
+      const response = await deleteProduct(product._id);
+      await removeDeletedProductsFromState([product._id]);
+      message.success(response?.message || "Product deleted successfully.");
+      return { success: true, deletedIds: [product._id] };
+    } catch (error) {
+      message.error(getApiErrorMessage(error, "Delete failed."));
+      return { success: false, deletedIds: [] };
+    }
+  };
+
+  const handleDeleteBulk = async (productIds) => {
+    try {
+      const response = await bulkDeleteProducts(productIds);
+      const deletedIds = (response?.results || [])
+        .filter((result) => result.success)
+        .map((result) => result.productId);
+      const failedResults = (response?.results || []).filter((result) => !result.success);
+
+      await removeDeletedProductsFromState(deletedIds);
+
+      if (deletedIds.length && !failedResults.length) {
+        message.success(`${deletedIds.length} products deleted successfully.`);
+      } else if (deletedIds.length && failedResults.length) {
+        const firstFailure = failedResults[0]?.reason || "One product could not be deleted.";
+        message.warning(
+          `${deletedIds.length} products deleted. ${failedResults.length} product${failedResults.length === 1 ? "" : "s"} could not be deleted because ${firstFailure.charAt(0).toLowerCase()}${firstFailure.slice(1)}`,
+        );
+      } else if (failedResults.length) {
+        message.error(failedResults[0]?.reason || "No selected products could be deleted.");
       }
-    });
+
+      return { success: deletedIds.length > 0, deletedIds, failedResults };
+    } catch (error) {
+      message.error(getApiErrorMessage(error, "Bulk delete failed."));
+      return { success: false, deletedIds: [] };
+    }
   };
 
   const handleImportProducts = async () => {
     await refreshAll();
-    message.success("Catalog refreshed from products and uploaded media.");
+    message.success("Catalog refreshed from saved product and media records.");
   };
 
   const handleDeleteOrphanImage = (image) => {
     if (!canDelete) {
-      message.error("You do not have permission to delete this draft image.");
+      message.error("You do not have permission to remove this intake media item.");
       return;
     }
 
@@ -305,11 +346,11 @@ export default function AdminProductsPage() {
         setOrphanImages((current) =>
           current.filter((entry) => entry.key !== pendingOrphanDelete.key)
         );
-        message.success("Draft image deleted.");
+        message.success("Media item removed from intake.");
         setPendingOrphanDelete(null);
       })
       .catch((error) => {
-        message.error(getApiErrorMessage(error, "Image delete failed."));
+        message.error(getApiErrorMessage(error, "Media delete failed."));
       })
       .finally(() => {
         setDeletingOrphanKey("");
@@ -322,11 +363,14 @@ export default function AdminProductsPage() {
         <div className="catalog-header-shell">
           <div>
             <h2>Products</h2>
-            <p>Manage all jewelry items visible on the NUVA storefront.</p>
+            <p>
+              Manage one complete record for each NUVA product, including workflow readiness,
+              media, pricing, and shared stock details.
+            </p>
           </div>
 
           <div className="catalog-header-actions">
-            <Button onClick={handleImportProducts}>Import Products</Button>
+            <Button onClick={handleImportProducts}>Refresh Records</Button>
             <Button onClick={() => setCategoryModalOpen(true)} disabled={!canManageCategories}>
               Add Category
             </Button>
@@ -338,6 +382,10 @@ export default function AdminProductsPage() {
       </Card>
 
       <Card className="nuva-card catalog-shell-card">
+        <div className="catalog-phase-note">
+          <strong>Publishing readiness:</strong> {summary.ready} ready to publish,{" "}
+          {summary.imagePending} waiting on showcase media, and {summary.published} already live.
+        </div>
         <ProductFilters
           filters={draftFilters}
           categories={categories}
@@ -350,23 +398,11 @@ export default function AdminProductsPage() {
         />
       </Card>
 
-      <Card className="nuva-card catalog-stats-card">
-        <div className="catalog-stats-grid">
-          {stats.map((stat) => (
-            <div className="catalog-stat-tile" key={stat.key}>
-              <div className={`catalog-stat-icon ${stat.tone}`}>{stat.icon}</div>
-              <div className="catalog-stat-copy">
-                <span>{stat.label}</span>
-                <strong>{stat.value}</strong>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
+      <AdminKpiSection title="Product Readiness" items={stats} />
 
       {(orphanLoading || orphanImages.length > 0) && (
         <Card
-          title={`Images Awaiting Product Details (${orphanImages.length})`}
+          title={`Media Awaiting Product Details (${orphanImages.length})`}
           className="nuva-card catalog-orphan-card"
           extra={
             <Button type="text" onClick={() => setOrphanSectionExpanded((current) => !current)}>
@@ -383,16 +419,16 @@ export default function AdminProductsPage() {
               <div className="catalog-orphan-grid">
                 {orphanImages.map((image) => (
                   <div className="catalog-orphan-tile" key={image.key}>
-                <button
-                  type="button"
-                  className="catalog-orphan-delete"
-                  aria-label="Delete draft image"
-                  aria-busy={deletingOrphanKey === image.key}
-                  disabled={deletingOrphanKey === image.key}
-                  onClick={() => handleDeleteOrphanImage(image)}
-                >
-                  <DeleteOutlined />
-                </button>
+                    <button
+                      type="button"
+                      className="catalog-orphan-delete"
+                      aria-label="Delete intake media"
+                      aria-busy={deletingOrphanKey === image.key}
+                      disabled={deletingOrphanKey === image.key}
+                      onClick={() => handleDeleteOrphanImage(image)}
+                    >
+                      <DeleteOutlined />
+                    </button>
                     <div className="catalog-orphan-image-wrap">
                       <img src={image.url} alt="Existing Backblaze B2 upload" />
                     </div>
@@ -414,7 +450,7 @@ export default function AdminProductsPage() {
                       </div>
                       <div className="catalog-orphan-status">
                         <FileTextOutlined />
-                        <span>Draft</span>
+                        <span>Image Pending</span>
                       </div>
                       <Button
                         type="primary"
@@ -422,7 +458,7 @@ export default function AdminProductsPage() {
                         disabled={!canCreate}
                         onClick={() => handleCreateDraftFromImage(image)}
                       >
-                        <span>Complete Product Details</span>
+                        <span>Complete Product Record</span>
                         <RightOutlined />
                       </Button>
                     </div>
@@ -436,7 +472,7 @@ export default function AdminProductsPage() {
 
       <Card className="nuva-card catalog-table-card">
         {!canRead ? (
-          <Empty description="You do not have permission to view products." />
+          <Empty description="You do not have permission to view central product records." />
         ) : filteredProducts.length ? (
           <ProductTable
             products={filteredProducts}
@@ -447,10 +483,11 @@ export default function AdminProductsPage() {
             onDuplicate={handleDuplicate}
             onToggleVisibility={handleToggleVisibility}
             onToggleArchive={handleToggleArchive}
-            onDelete={handleDelete}
+            onDeleteSingle={handleDeleteSingle}
+            onDeleteBulk={handleDeleteBulk}
           />
         ) : (
-          <Empty description="No products match the current filters." />
+          <Empty description="No product records match the current workflow, stock, or media filters." />
         )}
       </Card>
 
@@ -480,7 +517,7 @@ export default function AdminProductsPage() {
 
       <Modal
         open={Boolean(pendingOrphanDelete)}
-        title="Delete this image?"
+        title="Delete this media item?"
         okText="Delete"
         cancelText="Cancel"
         okButtonProps={{ danger: true, loading: deletingOrphanKey === pendingOrphanDelete?.key }}
@@ -492,7 +529,7 @@ export default function AdminProductsPage() {
         }}
       >
         <p>
-          This will permanently remove the image from “Images Awaiting Product Details” and clean up
+          This will permanently remove the media item from the product intake queue and clean up
           its backend record as well.
         </p>
       </Modal>

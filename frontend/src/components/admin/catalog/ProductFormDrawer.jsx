@@ -12,6 +12,7 @@ import {
   Row,
   Select,
   Spin,
+  Tag,
   message
 } from "antd";
 import {
@@ -25,9 +26,18 @@ import {
   PlusOutlined,
   TagOutlined
 } from "@ant-design/icons";
-import { createProduct, getProduct, updateProduct, uploadProductImage } from "../../../services/productService";
-import { createCategory } from "../../../services/categoryService";
+import {
+  createProduct,
+  getProduct,
+  previewProductSku,
+  updateProduct,
+  uploadProductImage
+} from "../../../services/productService";
+import { createCategory, getVariantCodes } from "../../../services/categoryService";
+import { useCurrency } from "../../../context/CurrencyContext";
+import { getPurchaseBatches, getSuppliers } from "../../../services/purchaseService";
 import { buildProductPayload } from "../../../utils/productTransforms";
+import { CURRENCY_OPTIONS, convertCurrencyAmount } from "../../../utils/currency";
 import { getApiErrorMessage } from "../../../utils/getApiErrorMessage";
 import ProductImageUploader from "./ProductImageUploader";
 
@@ -48,11 +58,25 @@ const defaultValues = {
   description: "",
   categoryId: undefined,
   categoryName: "",
+  categoryCode: "",
   sku: "",
-  status: "draft",
+  designNumber: 0,
+  workflowStatus: "draft",
   visibility: "hidden",
   price: 0,
-  currency: "AED",
+  currency: "INR",
+  supplierId: "",
+  supplierName: "",
+  purchaseBatchId: "",
+  purchaseDate: "",
+  quantityPurchased: 0,
+  purchaseUnitCost: 0,
+  purchaseTotalCost: 0,
+  directProductExpense: 0,
+  allocatedBatchExpense: 0,
+  packagingCost: 0,
+  totalProductCost: 0,
+  suggestedSellingPrice: 0,
   taxIncluded: true,
   stock: 0,
   lowStockLimit: 3,
@@ -63,6 +87,8 @@ const defaultValues = {
   stoneType: "",
   color: "",
   size: "",
+  variantName: "",
+  variantCode: "",
   weight: "",
   occasion: "",
   careInstructions: "",
@@ -87,8 +113,8 @@ const sectionItems = [
   },
   {
     key: "images",
-    label: "Images",
-    description: "Upload, order and crop product visuals.",
+    label: "Media",
+    description: "Organize original and showcase media in one product record.",
     icon: PictureOutlined
   },
   {
@@ -99,8 +125,8 @@ const sectionItems = [
   },
   {
     key: "visibility",
-    label: "Visibility & Labels",
-    description: "Status, storefront visibility and merchandising tags.",
+    label: "Workflow & Labels",
+    description: "Set the product workflow stage and storefront presentation.",
     icon: EyeOutlined
   }
 ];
@@ -169,20 +195,117 @@ export default function ProductFormDrawer({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [productLoading, setProductLoading] = useState(false);
+  const [purchaseLinksLoading, setPurchaseLinksLoading] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [categorySaving, setCategorySaving] = useState(false);
+  const [suppliers, setSuppliers] = useState([]);
+  const [variantCodes, setVariantCodes] = useState([]);
+  const [purchaseBatches, setPurchaseBatches] = useState([]);
   const [currentStep, setCurrentStep] = useState(0);
   const [saveError, setSaveError] = useState("");
+  const [skuPreviewLoading, setSkuPreviewLoading] = useState(false);
   const [imageList, setImageList] = useState([]);
+  const { rates } = useCurrency();
   const isEdit = Boolean(productId);
   const canSave = isEdit ? canUpdate : canCreate;
   const stepFieldMap = [
     ["name", "categoryId", "sku", "description"],
-    ["price", "currency", "stock", "lowStockLimit", "taxIncluded", "allowBackorder"],
+    [
+      "price",
+      "currency",
+      "stock",
+      "lowStockLimit",
+      "supplierName",
+      "purchaseBatchId",
+      "purchaseDate",
+      "quantityPurchased",
+      "purchaseUnitCost",
+      "purchaseTotalCost",
+      "directProductExpense",
+      "allocatedBatchExpense",
+      "packagingCost",
+      "totalProductCost",
+      "suggestedSellingPrice",
+      "taxIncluded",
+      "allowBackorder"
+    ],
     ["images"],
     ["material", "plating", "stoneType", "color", "size", "weight", "occasion", "careInstructions"],
-    ["status", "visibility", "isFeatured", "isBestSeller", "isNewArrival", "tags"]
+    ["workflowStatus", "isFeatured", "isBestSeller", "isNewArrival", "tags"]
   ];
+  const currentSection = sectionItems[currentStep];
+
+  const handleCurrencyFieldChange = (nextCurrency) => {
+    const currentCurrency = form.getFieldValue("currency") || "INR";
+    if (currentCurrency === nextCurrency) {
+      return;
+    }
+
+    const nextValues = {};
+    ["price", "suggestedSellingPrice"].forEach((field) => {
+      const currentValue = Number(form.getFieldValue(field) ?? 0);
+      nextValues[field] = convertCurrencyAmount(currentValue, currentCurrency, nextCurrency, rates);
+    });
+
+    form.setFieldsValue({
+      ...nextValues,
+      currency: nextCurrency
+    });
+  };
+  const originalMediaCount = imageList.filter((image) => image.mediaType === "original").length;
+  const showcaseMediaCount = imageList.filter((image) => image.mediaType !== "original").length;
+  const watchedPurchaseTotalCost = Form.useWatch("purchaseTotalCost", form);
+  const watchedDirectProductExpense = Form.useWatch("directProductExpense", form);
+  const watchedAllocatedBatchExpense = Form.useWatch("allocatedBatchExpense", form);
+  const watchedPackagingCost = Form.useWatch("packagingCost", form);
+  const watchedSuggestedSellingPrice = Form.useWatch("suggestedSellingPrice", form);
+  const watchedSupplierId = Form.useWatch("supplierId", form);
+  const watchedSku = Form.useWatch("sku", form);
+  const watchedName = Form.useWatch("name", form);
+  const watchedCategoryId = Form.useWatch("categoryId", form);
+  const watchedCategoryName = Form.useWatch("categoryName", form);
+  const watchedColor = Form.useWatch("color", form);
+  const watchedSize = Form.useWatch("size", form);
+  const watchedMaterial = Form.useWatch("material", form);
+  const watchedVariantCode = Form.useWatch("variantCode", form);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const purchaseTotalCost = Number(watchedPurchaseTotalCost) || 0;
+    const directProductExpense = Number(watchedDirectProductExpense) || 0;
+    const allocatedBatchExpense = Number(watchedAllocatedBatchExpense) || 0;
+    const packagingCost = Number(watchedPackagingCost) || 0;
+    const totalProductCost = Number(
+      (purchaseTotalCost + directProductExpense + allocatedBatchExpense + packagingCost).toFixed(2)
+    );
+    const currentTotal = Number(form.getFieldValue("totalProductCost")) || 0;
+
+    if (currentTotal !== totalProductCost) {
+      form.setFieldValue("totalProductCost", totalProductCost);
+    }
+
+    const currentSuggested = Number(watchedSuggestedSellingPrice) || 0;
+    const suggestedSellingPrice = totalProductCost
+      ? Number((totalProductCost * 1.35).toFixed(2))
+      : 0;
+
+    if (currentSuggested === 0 || currentSuggested === currentTotal || !currentSuggested) {
+      if (currentSuggested !== suggestedSellingPrice) {
+        form.setFieldValue("suggestedSellingPrice", suggestedSellingPrice);
+      }
+    }
+  }, [
+    form,
+    open,
+    watchedAllocatedBatchExpense,
+    watchedDirectProductExpense,
+    watchedPackagingCost,
+    watchedPurchaseTotalCost,
+    watchedSuggestedSellingPrice
+  ]);
 
   useEffect(() => {
     if (!open) {
@@ -209,6 +332,8 @@ export default function ProductFormDrawer({
           ...defaultValues,
           ...product,
           images: product.images || [],
+          purchaseDate: product.purchaseDate ? String(product.purchaseDate).slice(0, 10) : "",
+          workflowStatus: product.workflowStatus || "draft",
           tags: product.tags || []
         });
         setImageList(product.images || []);
@@ -222,21 +347,202 @@ export default function ProductFormDrawer({
       });
   }, [form, open, productId]);
 
+  useEffect(() => {
+    if (!open) {
+      setSuppliers([]);
+      setPurchaseBatches([]);
+      setVariantCodes([]);
+      return;
+    }
+
+    let cancelled = false;
+    setPurchaseLinksLoading(true);
+
+    Promise.allSettled([getSuppliers({ activeOnly: true }), getPurchaseBatches(), getVariantCodes({ admin: true })])
+      .then(([supplierResult, batchResult, variantCodeResult]) => {
+        if (cancelled) {
+          return;
+        }
+
+        setSuppliers(supplierResult.status === "fulfilled" ? supplierResult.value : []);
+        setPurchaseBatches(batchResult.status === "fulfilled" ? batchResult.value : []);
+        setVariantCodes(variantCodeResult.status === "fulfilled" ? variantCodeResult.value : []);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setPurchaseLinksLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
   const categoryOptions = useMemo(
     () =>
       categories.map((category) => ({
         label: category.isActive ? category.name : `${category.name} (Inactive)`,
         value: category._id,
-        categoryName: category.name
+        categoryName: category.name,
+        categoryCode: category.code
       })),
     [categories]
   );
+
+  const colorVariantOptions = useMemo(
+    () =>
+      variantCodes
+        .filter((item) => (item.type || "").toLowerCase() === "color" && item.isActive !== false)
+        .map((item) => ({
+          label: `${item.name} (${item.code})`,
+          value: item.name
+        })),
+    [variantCodes]
+  );
+
+  const supplierOptions = useMemo(
+    () =>
+      suppliers.map((supplier) => ({
+        label: supplier.name,
+        value: supplier._id
+      })),
+    [suppliers]
+  );
+
+  const purchaseBatchOptions = useMemo(
+    () =>
+      purchaseBatches
+        .filter((batch) => !watchedSupplierId || batch.supplierId === watchedSupplierId)
+        .map((batch) => {
+          const purchaseDate = batch.purchaseDate
+            ? new Date(batch.purchaseDate).toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric"
+              })
+            : "No date";
+
+          return {
+            label: `${batch.supplierName} • ${purchaseDate}${batch.invoiceNumber ? ` • ${batch.invoiceNumber}` : ""}`,
+            value: batch._id
+          };
+        }),
+    [purchaseBatches, watchedSupplierId]
+  );
+
+  useEffect(() => {
+    if (!open || isEdit || !watchedCategoryId) {
+      return;
+    }
+
+    let cancelled = false;
+    setSkuPreviewLoading(true);
+
+    previewProductSku({
+      categoryId: watchedCategoryId,
+      categoryName: watchedCategoryName,
+      color: watchedColor || undefined,
+      size: watchedSize || undefined,
+      material: watchedMaterial || undefined,
+      variantCode: watchedVariantCode || undefined
+    })
+      .then((preview) => {
+        if (cancelled) {
+          return;
+        }
+
+        form.setFieldsValue({
+          sku: preview.sku || "",
+          designNumber: preview.designNumber || 0,
+          categoryCode: preview.categoryCode || form.getFieldValue("categoryCode") || ""
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          form.setFieldValue("sku", "");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setSkuPreviewLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    form,
+    isEdit,
+    open,
+    watchedCategoryId,
+    watchedCategoryName,
+    watchedColor,
+    watchedMaterial,
+    watchedSize,
+    watchedVariantCode
+  ]);
 
   const updateImages = (updater) => {
     setImageList((currentImages) => {
       const nextImages = updater(currentImages || []);
       form.setFieldValue("images", nextImages);
       return nextImages;
+    });
+  };
+
+  const findBatchItemForProduct = (batch) => {
+    if (!batch) {
+      return null;
+    }
+
+    const activeProductId = productId || form.getFieldValue("id") || form.getFieldValue("_id");
+    const currentSku = (watchedSku || form.getFieldValue("sku") || "").trim().toLowerCase();
+    const currentName = (watchedName || form.getFieldValue("name") || "").trim().toLowerCase();
+
+    return (
+      (batch.items || []).find((item) => item.productId && activeProductId && item.productId === activeProductId) ||
+      (batch.items || []).find((item) => item.sku && currentSku && item.sku.trim().toLowerCase() === currentSku) ||
+      (batch.items || []).find(
+        (item) => item.productName && currentName && item.productName.trim().toLowerCase() === currentName
+      ) ||
+      batch.items?.[0] ||
+      null
+    );
+  };
+
+  const handleSupplierSelect = (supplierId) => {
+    const supplier = suppliers.find((item) => item._id === supplierId);
+    form.setFieldValue("supplierId", supplierId || "");
+    form.setFieldValue("supplierName", supplier?.name || "");
+
+    const selectedBatchId = form.getFieldValue("purchaseBatchId");
+    if (selectedBatchId) {
+      const selectedBatch = purchaseBatches.find((batch) => batch._id === selectedBatchId);
+      if (selectedBatch && selectedBatch.supplierId !== supplierId) {
+        form.setFieldValue("purchaseBatchId", "");
+      }
+    }
+  };
+
+  const handlePurchaseBatchSelect = (batchId) => {
+    const batch = purchaseBatches.find((item) => item._id === batchId);
+    if (!batch) {
+      form.setFieldValue("purchaseBatchId", "");
+      return;
+    }
+
+    const linkedItem = findBatchItemForProduct(batch);
+    form.setFieldsValue({
+      supplierId: batch.supplierId || "",
+      supplierName: batch.supplierName || "",
+      purchaseBatchId: batch._id,
+      purchaseDate: batch.purchaseDate ? String(batch.purchaseDate).slice(0, 10) : "",
+      quantityPurchased: linkedItem?.quantity ?? form.getFieldValue("quantityPurchased") ?? 0,
+      purchaseUnitCost: linkedItem?.unitCost ?? 0,
+      purchaseTotalCost: linkedItem?.totalPurchaseCost ?? 0,
+      allocatedBatchExpense: linkedItem?.allocatedSharedExpense ?? 0
     });
   };
 
@@ -252,7 +558,8 @@ export default function ProductFormDrawer({
           url: previewUrl,
           key: "",
           alt: form.getFieldValue("name") || file.name || "NUVA product image",
-          isPrimary: images.length === 0
+          isPrimary: images.length === 0,
+          mediaType: images.length === 0 ? "showcase" : "original"
         }
       ]);
 
@@ -325,11 +632,14 @@ export default function ProductFormDrawer({
       };
       const payload = buildProductPayload(fullValues);
       if (productId) {
-        await updateProduct(productId, payload);
+        const savedProduct = await updateProduct(productId, payload);
         message.success("Product updated.");
+        if (savedProduct?.sku) {
+          form.setFieldValue("sku", savedProduct.sku);
+        }
       } else {
-        await createProduct(payload);
-        message.success("Product created.");
+        const savedProduct = await createProduct(payload);
+        message.success(`Product created successfully. SKU: ${savedProduct?.sku || "Pending"}`);
       }
       await onSaved();
     } catch (error) {
@@ -347,6 +657,7 @@ export default function ProductFormDrawer({
     try {
       const createdCategory = await createCategory({
         name: values.name.trim(),
+        code: values.code.trim().toUpperCase(),
         slug: values.slug?.trim() || undefined,
         description: values.description?.trim() || null,
         imageUrl: null,
@@ -360,6 +671,7 @@ export default function ProductFormDrawer({
 
       form.setFieldValue("categoryId", createdCategory._id);
       form.setFieldValue("categoryName", createdCategory.name);
+      form.setFieldValue("categoryCode", createdCategory.code || "");
       setCategoryModalOpen(false);
       categoryForm.resetFields();
       message.success("Category created and selected.");
@@ -409,8 +721,6 @@ export default function ProductFormDrawer({
   };
 
   const renderStepContent = () => {
-    const currentSection = sectionItems[currentStep];
-
     const renderStageHeader = () => (
       <div className="catalog-form-stage-head">
         <div>
@@ -419,6 +729,20 @@ export default function ProductFormDrawer({
           </span>
           <h4>{currentSection.label}</h4>
           <p>{currentSection.description}</p>
+        </div>
+        <div className="catalog-mobile-workflow-strip">
+          <div className="catalog-mobile-workflow-chip">
+            <strong>Status</strong>
+            <span>{form.getFieldValue("workflowStatus") || "draft"}</span>
+          </div>
+          <div className="catalog-mobile-workflow-chip">
+            <strong>Original</strong>
+            <span>{originalMediaCount}</span>
+          </div>
+          <div className="catalog-mobile-workflow-chip">
+            <strong>Showcase</strong>
+            <span>{showcaseMediaCount}</span>
+          </div>
         </div>
       </div>
     );
@@ -454,9 +778,10 @@ export default function ProductFormDrawer({
                   options={categoryOptions}
                   placeholder="Select category"
                   disabled={!canSave}
-                  onChange={(_, option) =>
-                    form.setFieldValue("categoryName", option?.categoryName || "")
-                  }
+                  onChange={(_, option) => {
+                    form.setFieldValue("categoryName", option?.categoryName || "");
+                    form.setFieldValue("categoryCode", option?.categoryCode || "");
+                  }}
                   dropdownRender={(menu) => (
                     <>
                       {menu}
@@ -478,8 +803,33 @@ export default function ProductFormDrawer({
             </Col>
             <Col xs={24} lg={12}>
               <Form.Item label="SKU" name="sku">
-                <Input placeholder="Enter SKU" disabled={!canSave} />
+                <Input
+                  placeholder="SKU will be generated automatically"
+                  disabled
+                  suffix={skuPreviewLoading ? "Updating..." : null}
+                />
               </Form.Item>
+            </Col>
+            <Col xs={24}>
+              <div className="catalog-cost-summary-card">
+                <strong>Generated SKU Preview</strong>
+                <span>
+                  This updates automatically as you choose the category, color, size, or another
+                  variant. The number is saved only when the product is created successfully.
+                </span>
+                <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <Tag color="magenta">Prefix: NV</Tag>
+                  {form.getFieldValue("categoryCode") ? (
+                    <Tag color="pink">Category: {form.getFieldValue("categoryCode")}</Tag>
+                  ) : null}
+                  {form.getFieldValue("designNumber") ? (
+                    <Tag color="pink">
+                      Design No: {String(form.getFieldValue("designNumber")).padStart(3, "0")}
+                    </Tag>
+                  ) : null}
+                  {form.getFieldValue("sku") ? <Tag color="success">{form.getFieldValue("sku")}</Tag> : null}
+                </div>
+              </div>
             </Col>
             <Col xs={24}>
               <Form.Item label="Description" name="description">
@@ -523,17 +873,21 @@ export default function ProductFormDrawer({
                 }))
               )
             }
-            onAltChange={(index, value) =>
+            onAltChange={(index, value, mediaType) =>
               updateImages((images) =>
                 images.map((image, itemIndex) =>
-                  itemIndex === index ? { ...image, alt: value } : image
+                  itemIndex === index
+                    ? { ...image, alt: value, mediaType: mediaType || image.mediaType || "showcase" }
+                    : image
                 )
               )
             }
           />
           <div className="catalog-inline-tip">
             <BulbOutlined />
-            <span>Tip: Use clean, well-lit images with a plain background for the best results.</span>
+            <span>
+              Tip: Keep raw photos in Original Media, and move website-ready edits into Showcase Media.
+            </span>
           </div>
         </section>
       );
@@ -557,7 +911,8 @@ export default function ProductFormDrawer({
             <Col xs={24} md={12} xl={8}>
               <Form.Item label="Currency" name="currency" rules={[{ required: true }]}>
                 <Select
-                  options={[{ label: "AED", value: "AED" }]}
+                  options={CURRENCY_OPTIONS}
+                  onChange={handleCurrencyFieldChange}
                   disabled={!canSave}
                 />
               </Form.Item>
@@ -578,6 +933,134 @@ export default function ProductFormDrawer({
                   min={0}
                   style={{ width: "100%" }}
                   placeholder="0"
+                  disabled={!canSave}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item label="Supplier" name="supplierId">
+                <Select
+                  allowClear
+                  showSearch
+                  options={supplierOptions}
+                  placeholder={purchaseLinksLoading ? "Loading suppliers..." : "Select supplier"}
+                  disabled={!canSave || purchaseLinksLoading}
+                  onChange={handleSupplierSelect}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item label="Purchase Batch ID" name="purchaseBatchId">
+                <Select
+                  allowClear
+                  showSearch
+                  options={purchaseBatchOptions}
+                  placeholder={purchaseLinksLoading ? "Loading batches..." : "Select purchase batch"}
+                  disabled={!canSave || purchaseLinksLoading}
+                  onChange={handlePurchaseBatchSelect}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item label="Supplier Name" name="supplierName">
+                <Input placeholder="Auto-filled from supplier or batch" disabled />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item label="Purchase Date" name="purchaseDate">
+                <Input type="date" disabled={!canSave} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item label="Quantity Purchased" name="quantityPurchased">
+                <InputNumber
+                  min={0}
+                  style={{ width: "100%" }}
+                  placeholder="0"
+                  disabled={!canSave}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item label="Purchase Unit Cost" name="purchaseUnitCost">
+                <InputNumber
+                  min={0}
+                  step={0.01}
+                  precision={2}
+                  style={{ width: "100%" }}
+                  placeholder="0.00"
+                  disabled={!canSave}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item label="Purchase Total Cost" name="purchaseTotalCost">
+                <InputNumber
+                  min={0}
+                  step={0.01}
+                  precision={2}
+                  style={{ width: "100%" }}
+                  placeholder="0.00"
+                  disabled={!canSave}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item label="Direct Product Expense" name="directProductExpense">
+                <InputNumber
+                  min={0}
+                  step={0.01}
+                  precision={2}
+                  style={{ width: "100%" }}
+                  placeholder="0.00"
+                  disabled={!canSave}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item label="Allocated Batch Expense" name="allocatedBatchExpense">
+                <InputNumber
+                  min={0}
+                  step={0.01}
+                  precision={2}
+                  style={{ width: "100%" }}
+                  placeholder="0.00"
+                  disabled={!canSave}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item label="Packaging Cost" name="packagingCost">
+                <InputNumber
+                  min={0}
+                  step={0.01}
+                  precision={2}
+                  style={{ width: "100%" }}
+                  placeholder="0.00"
+                  disabled={!canSave}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item label="Total Product Cost" name="totalProductCost">
+                <InputNumber
+                  min={0}
+                  step={0.01}
+                  precision={2}
+                  style={{ width: "100%" }}
+                  placeholder="0.00"
+                  disabled
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item label="Suggested Selling Price" name="suggestedSellingPrice">
+                <InputNumber
+                  min={0}
+                  step={0.01}
+                  precision={2}
+                  style={{ width: "100%" }}
+                  placeholder="0.00"
                   disabled={!canSave}
                 />
               </Form.Item>
@@ -619,7 +1102,24 @@ export default function ProductFormDrawer({
                 </Form.Item>
               </div>
             </Col>
+            <Col xs={24}>
+              <div className="catalog-cost-summary-card">
+                <strong>Cost rollup</strong>
+                <span>
+                  Total product cost is calculated from purchase total, direct expenses, allocated
+                  batch expenses, and packaging. Suggested selling price starts at a 35% markup and
+                  can be adjusted before saving.
+                </span>
+              </div>
+            </Col>
           </Row>
+          <div className="catalog-inline-tip">
+            <BulbOutlined />
+            <span>
+              Tip: Fill in supplier and purchase fields here when a product is linked to a batch so
+              margin checks stay visible to the team.
+            </span>
+          </div>
         </section>
       );
     }
@@ -664,7 +1164,11 @@ export default function ProductFormDrawer({
                 <Select
                   allowClear
                   placeholder="Select color"
-                  options={colorOptions.map((value) => ({ value, label: value }))}
+                  options={
+                    colorVariantOptions.length
+                      ? colorVariantOptions
+                      : colorOptions.map((value) => ({ value, label: value }))
+                  }
                   disabled={!canSave}
                 />
               </Form.Item>
@@ -672,6 +1176,21 @@ export default function ProductFormDrawer({
             <Col xs={24} md={12} xl={8}>
               <Form.Item label="Size" name="size">
                 <Input placeholder="Enter size" disabled={!canSave} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item
+                label="Other Variant Code"
+                name="variantCode"
+                extra="Optional code for variants that affect inventory or SKU grouping."
+                rules={[{ pattern: /^[A-Za-z]{0,4}$/, message: "Use up to 4 letters only." }]}
+              >
+                <Input placeholder="CL" maxLength={4} disabled={!canSave} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12} xl={8}>
+              <Form.Item label="Variant Notes" name="variantName">
+                <Input placeholder="Optional variant note" disabled={!canSave} />
               </Form.Item>
             </Col>
             <Col xs={24} md={12} xl={8}>
@@ -717,11 +1236,13 @@ export default function ProductFormDrawer({
           {renderStageHeader()}
           <Row gutter={[16, 18]}>
             <Col xs={24} lg={12}>
-              <Form.Item label="Product Status" name="status">
+              <Form.Item label="Workflow Status" name="workflowStatus">
                 <Select
                   options={[
-                    { label: "Active", value: "active" },
                     { label: "Draft", value: "draft" },
+                    { label: "Image Pending", value: "image_pending" },
+                    { label: "Ready to Publish", value: "ready_to_publish" },
+                    { label: "Published", value: "published" },
                     { label: "Archived", value: "archived" }
                   ]}
                   disabled={!canSave}
@@ -729,22 +1250,22 @@ export default function ProductFormDrawer({
               </Form.Item>
             </Col>
             <Col xs={24} lg={12}>
-              <Form.Item label="Storefront Visibility" name="visibility">
-                <Select
-                  options={[
-                    { label: "Visible", value: "visible" },
-                    { label: "Hidden", value: "hidden" }
-                  ]}
-                  disabled={!canSave}
-                />
-              </Form.Item>
+              <div className="catalog-choice-card compact">
+                <div className="catalog-choice-head">
+                  <strong>Storefront Visibility</strong>
+                  <span>Visibility now follows the workflow status in this phase.</span>
+                </div>
+                <div className="catalog-inline-readonly">
+                  Draft and Image Pending stay hidden. Published items become visible automatically.
+                </div>
+              </div>
             </Col>
           </Row>
 
           <div className="catalog-visibility-panel">
             <div className="catalog-visibility-panel-head">
               <strong>Product Labels</strong>
-              <span>Select labels that help merchandise this item across the storefront.</span>
+              <span>Select labels that help merchandise this item once it is ready for the storefront.</span>
             </div>
             <div className="catalog-label-grid">
               {labelOptions.map((item) => (
@@ -768,7 +1289,9 @@ export default function ProductFormDrawer({
 
           <div className="catalog-inline-tip">
             <BulbOutlined />
-            <span>Tip: Use clear labels and tags so products are easier to discover and promote.</span>
+            <span>
+              Tip: Use Draft, Image Pending, and Ready to Publish to track work before a product goes live.
+            </span>
           </div>
         </section>
       );
@@ -799,6 +1322,9 @@ export default function ProductFormDrawer({
           <header className="catalog-modal-header">
             <div>
               <h3>{productId ? "Edit Product" : "Add Product"}</h3>
+              <p className="catalog-modal-subtitle">
+                Move through the workflow step by step and keep product media, stock, and publishing in one place.
+              </p>
             </div>
           </header>
 
@@ -863,7 +1389,12 @@ export default function ProductFormDrawer({
             <Button onClick={goBack} disabled={currentStep === 0}>
               Back
             </Button>
-            <Button disabled>Save as Draft</Button>
+            <Button
+              disabled={!canSave}
+              onClick={() => handleSubmit(form.getFieldsValue(true), { workflowStatus: "draft" })}
+            >
+              Save as Draft
+            </Button>
             <Button
               type="primary"
               loading={saving}
@@ -890,6 +1421,16 @@ export default function ProductFormDrawer({
         <Form form={categoryForm} layout="vertical">
           <Form.Item label="Category Name" name="name" rules={[{ required: true }]}>
             <Input placeholder="Necklaces" />
+          </Form.Item>
+          <Form.Item
+            label="Category Code"
+            name="code"
+            rules={[
+              { required: true, message: "Please enter a category code." },
+              { pattern: /^[A-Za-z]{2,3}$/, message: "Use 2 or 3 letters only." }
+            ]}
+          >
+            <Input placeholder="NK" maxLength={3} />
           </Form.Item>
           <Form.Item label="Slug" name="slug">
             <Input placeholder="Optional" />

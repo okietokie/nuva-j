@@ -8,6 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from app.core.admin import has_permission
 from app.db.mongodb import get_database
 from app.dependencies.auth import require_admin, require_permission
+from app.services.b2_service import delete_image_from_b2
+from app.core.sku import build_sku_details
 from app.routers.products import (
     attach_category_details,
     build_image_only_product,
@@ -19,10 +21,73 @@ from app.routers.products import (
     to_object_id,
     validate_visibility_rules,
 )
-from app.schemas.product import ProductCreate, ProductFromImageCreate, ProductImage, ProductUpdate
+from app.schemas.product import (
+    ProductBulkDeleteRequest,
+    ProductCreate,
+    ProductDeleteResult,
+    ProductFromImageCreate,
+    ProductImage,
+    ProductUpdate,
+)
 from app.utils.serializers import serialize_document, serialize_many
 
 router = APIRouter(prefix="/admin/products", tags=["Admin Products"])
+
+
+async def delete_product_images_if_unused(db, product: dict) -> None:
+    image_keys = {
+        (image.get("key") or "").strip()
+        for image in product.get("images", [])
+        if (image.get("key") or "").strip()
+    }
+    if not image_keys:
+        return
+
+    for key in image_keys:
+        other_reference = await db.products.find_one(
+            {"_id": {"$ne": product["_id"]}, "images.key": key},
+            {"_id": 1},
+        )
+        if other_reference:
+            continue
+        await delete_image_from_b2(key)
+
+
+async def delete_product_record(db, product: dict) -> None:
+    await db.products.delete_one({"_id": product["_id"]})
+    try:
+        await delete_product_images_if_unused(db, product)
+    except Exception:
+        # Storage cleanup is best-effort. A product that is safe to delete
+        # should not remain in the database just because external image removal failed.
+        pass
+
+
+async def try_delete_product(db, product_id: str) -> ProductDeleteResult:
+    try:
+        object_id = to_object_id(product_id)
+    except HTTPException:
+        return ProductDeleteResult(
+            productId=product_id,
+            success=False,
+            reason="Invalid product id.",
+        )
+
+    product = await db.products.find_one({"_id": object_id})
+    if not product:
+        return ProductDeleteResult(
+            productId=product_id,
+            success=False,
+            reason="Product not found.",
+        )
+
+    await delete_product_record(db, product)
+
+    return ProductDeleteResult(
+        productId=product_id,
+        productName=product.get("name"),
+        success=True,
+    )
 
 
 def build_admin_product_filters(
@@ -71,6 +136,8 @@ async def admin_create_product(
     now = datetime.now(timezone.utc)
     product_data = normalize_product_payload(payload.model_dump())
     product_data = await attach_category_details(db, product_data)
+    if product_data.get("categoryId"):
+        product_data.update(await build_sku_details(db, product_data, reserve_number=True))
     product_data = normalize_status_visibility(product_data)
     validate_visibility_rules(product_data)
     await ensure_unique_product_fields(db, product_data)
@@ -81,6 +148,36 @@ async def admin_create_product(
     result = await db.products.insert_one(product_data)
     product = await db.products.find_one({"_id": result.inserted_id})
     return serialize_document(product)
+
+
+@router.get("/sku-preview")
+async def get_sku_preview(
+    category_id: str | None = Query(default=None, alias="categoryId"),
+    category_name: str | None = Query(default=None, alias="categoryName"),
+    color: str | None = Query(default=None),
+    size: str | None = Query(default=None),
+    material: str | None = Query(default=None),
+    variant_code: str | None = Query(default=None, alias="variantCode"),
+    _admin=Depends(require_permission("products.create")),
+):
+    db = get_database()
+    details = await build_sku_details(
+        db,
+        {
+            "categoryId": category_id,
+            "categoryName": category_name,
+            "color": color,
+            "size": size,
+            "material": material,
+            "variantCode": variant_code,
+        },
+        reserve_number=False,
+    )
+    return {
+        "sku": details.get("sku", ""),
+        "designNumber": details.get("designNumber", 0),
+        "categoryCode": details.get("categoryCode", ""),
+    }
 
 
 @router.post("/from-image", status_code=status.HTTP_201_CREATED)
@@ -114,6 +211,24 @@ async def get_admin_products(
     filters = build_admin_product_filters(search, category, status_value, visibility, stock)
     products = await db.products.find(filters).sort("updatedAt", -1).to_list(length=None)
     return serialize_many(products)
+
+
+@router.post("/bulk-delete")
+async def admin_bulk_delete_products(
+    payload: ProductBulkDeleteRequest,
+    _admin=Depends(require_permission("products.delete")),
+):
+    db = get_database()
+    unique_product_ids = list(dict.fromkeys(payload.productIds))
+    results = [await try_delete_product(db, product_id) for product_id in unique_product_ids]
+
+    deleted_count = sum(1 for result in results if result.success)
+    blocked_count = len(results) - deleted_count
+    return {
+        "results": [result.model_dump() for result in results],
+        "deletedCount": deleted_count,
+        "blockedCount": blocked_count,
+    }
 
 
 @router.get("/{product_id}")
@@ -279,21 +394,14 @@ async def admin_delete_product(
     _admin=Depends(require_permission("products.delete")),
 ):
     db = get_database()
-    object_id = to_object_id(product_id)
-    result = await db.products.update_one(
-        {"_id": object_id},
-        {
-            "$set": {
-                "status": "deleted",
-                "visibility": "hidden",
-                "updatedAt": datetime.now(timezone.utc),
-                "updatedBy": maybe_object_id(_admin.get("id")),
-            }
-        },
-    )
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Product not found.")
-    return {"message": "Product moved to deleted status."}
+    result = await try_delete_product(db, product_id)
+    if result.success:
+        return {"message": "Product deleted successfully.", "result": result.model_dump()}
+    if result.reason == "Product not found.":
+        raise HTTPException(status_code=404, detail=result.reason)
+    if result.reason == "Invalid product id.":
+        raise HTTPException(status_code=400, detail=result.reason)
+    raise HTTPException(status_code=409, detail=result.reason)
 
 
 @router.post("/{product_id}/images")

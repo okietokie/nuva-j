@@ -1,7 +1,10 @@
 import { Button, Card, Col, Row, Tag } from "antd";
 import { Link } from "react-router-dom";
+import { useCurrency } from "../context/CurrencyContext";
 
 export default function ProductGrid({ products, onAddToCart }) {
+  const { formatMoney } = useCurrency();
+
   return (
     <Row gutter={[24, 24]}>
       {products.map((product) => (
@@ -24,7 +27,7 @@ export default function ProductGrid({ products, onAddToCart }) {
             <h3>{product.displayName}</h3>
             <p>{product.description}</p>
             <div className="product-grid-footer">
-              <strong>{product.displayPriceLabel}</strong>
+              <strong>{formatMoney(product.price, product.currency || "AED")}</strong>
               <div className="product-grid-actions">
                 <Link to={`/products/${product.slug || product._id}`}>
                   <Button>Details</Button>

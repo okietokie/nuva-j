@@ -24,6 +24,7 @@ import {
 } from "@ant-design/icons";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useCurrency } from "../../context/CurrencyContext";
 import { getCategories } from "../../services/categoryService";
 import {
   createProduct,
@@ -32,6 +33,7 @@ import {
   uploadProductImage
 } from "../../services/productService";
 import { buildProductPayload } from "../../utils/productTransforms";
+import { CURRENCY_OPTIONS, convertCurrencyAmount } from "../../utils/currency";
 
 const occasionOptions = ["Daily Wear", "Wedding", "Gift", "Party", "Office", "Travel"];
 
@@ -55,10 +57,24 @@ export default function ProductFormPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const isEdit = Boolean(productId);
+  const { rates } = useCurrency();
   const productsBasePath = useMemo(() => {
     const parts = location.pathname.split("/");
     return `/admin/${parts[2]}/products`;
   }, [location.pathname]);
+
+  const handleCurrencyFieldChange = (nextCurrency) => {
+    const currentCurrency = form.getFieldValue("currency") || "INR";
+    if (currentCurrency === nextCurrency) {
+      return;
+    }
+
+    const currentPrice = Number(form.getFieldValue("price") ?? 0);
+    form.setFieldsValue({
+      price: convertCurrencyAmount(currentPrice, currentCurrency, nextCurrency, rates),
+      currency: nextCurrency
+    });
+  };
 
   useEffect(() => {
     getCategories({ admin: true }).then((categories) => {
@@ -69,7 +85,7 @@ export default function ProductFormPage() {
   useEffect(() => {
     if (!isEdit) {
       form.setFieldsValue({
-        currency: "AED",
+        currency: "INR",
         status: "draft",
         visibility: "hidden",
         lowStockLimit: 3,
@@ -240,7 +256,7 @@ export default function ProductFormPage() {
           </Col>
           <Col xs={24} md={8}>
             <Form.Item label="Currency" name="currency" rules={[{ required: true }]}>
-              <Select options={[{ value: "AED", label: "AED" }]} />
+              <Select options={CURRENCY_OPTIONS} onChange={handleCurrencyFieldChange} />
             </Form.Item>
           </Col>
         </Row>

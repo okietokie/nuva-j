@@ -20,7 +20,7 @@ export default function ProductFilters({
     <div className="catalog-filters-shell">
       <Input
         value={filters.search}
-        placeholder="Search by name, SKU, category..."
+        placeholder="Search by product name, SKU, category, or tag..."
         className="catalog-search-input"
         prefix={<SearchOutlined />}
         onChange={(event) => onChange("search", event.target.value)}
@@ -39,10 +39,11 @@ export default function ProductFilters({
         className="catalog-filter-select"
         options={[
           { label: "All Statuses", value: "all" },
-          { label: "Active", value: "active" },
           { label: "Draft", value: "draft" },
-          { label: "Archived", value: "archived" },
-          { label: "Deleted", value: "deleted" }
+          { label: "Image Pending", value: "image_pending" },
+          { label: "Ready to Publish", value: "ready_to_publish" },
+          { label: "Published", value: "published" },
+          { label: "Archived", value: "archived" }
         ]}
         onChange={(value) => onChange("status", value)}
       />
@@ -73,10 +74,10 @@ export default function ProductFilters({
 
       <Space.Compact>
         <Button icon={<ReloadOutlined />} onClick={onReset}>
-          Reset Filters
+          Reset
         </Button>
         <Button type="primary" icon={<FilterOutlined />} onClick={onApply}>
-          Apply Filters
+          Apply
         </Button>
       </Space.Compact>
     </div>

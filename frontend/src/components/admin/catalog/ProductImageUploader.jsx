@@ -23,6 +23,8 @@ export default function ProductImageUploader({
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const originalMedia = images.filter((image) => image.mediaType === "original");
+  const showcaseMedia = images.filter((image) => image.mediaType !== "original");
 
   const openCropModal = (index) => {
     setTargetIndex(index);
@@ -52,10 +54,10 @@ export default function ProductImageUploader({
                 <UploadOutlined />
               </div>
               <div className="image-upload-copy">
-                <span className="image-upload-title">Upload Images</span>
-                <p>Drag &amp; drop images here or click to browse</p>
+                <span className="image-upload-title">Upload Product Media</span>
+                <p>Drag and drop raw or edited media here, or click to browse</p>
                 <span className="image-upload-meta">
-                  JPG, PNG or WEBP • Max 10MB per image • Recommended size: 2000x2000px
+                  JPG, PNG or WEBP | Max 10MB per image | Recommended size: 2000x2000px
                 </span>
               </div>
             </div>
@@ -65,46 +67,66 @@ export default function ProductImageUploader({
         {images.length ? (
           <>
             <div className="uploaded-images-head">
-              <strong>Uploaded Images</strong>
+              <strong>Media Library</strong>
               <span>({images.length}/10)</span>
             </div>
+            <div className="catalog-inline-tip">
+              <span>
+                Original Media: {originalMedia.length} | Showcase Media: {showcaseMedia.length}
+              </span>
+            </div>
             <div className="uploaded-product-grid">
-            {images.map((image, index) => (
-              <div className="uploaded-product-tile" key={image.id || image.url || index}>
-                <button
-                  type="button"
-                  className={`uploaded-primary-pill${image.isPrimary ? " is-active" : ""}`}
-                  onClick={() => onSetPrimary(index)}
-                >
-                  {image.isPrimary ? <StarFilled /> : <StarOutlined />}
-                  {image.isPrimary ? "Primary" : "Set Primary"}
-                </button>
-                <button
-                  type="button"
-                  className="uploaded-remove-button"
-                  onClick={() => onRemove(index)}
-                >
-                  <DeleteOutlined />
-                </button>
-                <img src={image.url} alt={image.alt || "Product image"} />
-                <div className="uploaded-image-actions">
-                  <Button size="small" icon={<ScissorOutlined />} onClick={() => openCropModal(index)}>
-                    Crop
-                  </Button>
+              {images.map((image, index) => (
+                <div className="uploaded-product-tile" key={image.id || image.url || index}>
+                  <button
+                    type="button"
+                    className={`uploaded-primary-pill${image.isPrimary ? " is-active" : ""}`}
+                    onClick={() => onSetPrimary(index)}
+                  >
+                    {image.isPrimary ? <StarFilled /> : <StarOutlined />}
+                    {image.isPrimary ? "Primary" : "Set Primary"}
+                  </button>
+                  <button
+                    type="button"
+                    className="uploaded-remove-button"
+                    onClick={() => onRemove(index)}
+                  >
+                    <DeleteOutlined />
+                  </button>
+                  <img src={image.url} alt={image.alt || "Product image"} />
+                  <div className="catalog-image-type-chip">
+                    {image.mediaType === "original" ? "Original Media" : "Showcase Media"}
+                  </div>
+                  <div className="uploaded-image-actions">
+                    <Button size="small" icon={<ScissorOutlined />} onClick={() => openCropModal(index)}>
+                      Crop
+                    </Button>
+                    <Button
+                      size="small"
+                      onClick={() =>
+                        onAltChange(
+                          index,
+                          image.alt,
+                          image.mediaType === "original" ? "showcase" : "original"
+                        )
+                      }
+                    >
+                      {image.mediaType === "original" ? "Move to Showcase" : "Move to Original"}
+                    </Button>
+                  </div>
+                  <Input
+                    size="small"
+                    value={image.alt}
+                    placeholder="Product image label"
+                    onChange={(event) => onAltChange(index, event.target.value, image.mediaType)}
+                  />
                 </div>
-                <Input
-                  size="small"
-                  value={image.alt}
-                  placeholder="Product image label"
-                  onChange={(event) => onAltChange(index, event.target.value)}
-                />
-              </div>
-            ))}
+              ))}
             </div>
           </>
         ) : (
           <div className="uploaded-product-empty">
-            <Empty description="No image uploaded. Placeholder will be used." />
+            <Empty description="No product media uploaded yet." />
           </div>
         )}
       </div>

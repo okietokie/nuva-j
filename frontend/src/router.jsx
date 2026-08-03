@@ -13,15 +13,22 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import MyOrdersPage from "./pages/MyOrdersPage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
+import AdminExpensesPage from "./pages/admin/AdminExpensesPage";
+import AdminFinancePage from "./pages/admin/AdminFinancePage";
 import AdminCategoriesPage from "./pages/admin/AdminCategoriesPage";
 import AdminInventoryPage from "./pages/admin/AdminInventoryPage";
 import AdminOrdersPage from "./pages/admin/AdminOrdersPage";
+import AdminPackagingPage from "./pages/admin/AdminPackagingPage";
 import AdminPlaceholderPage from "./pages/admin/AdminPlaceholderPage";
 import AdminProductsPage from "./pages/admin/AdminProductsPage";
+import AdminPurchasesPage from "./pages/admin/AdminPurchasesPage";
+import AdminReportsPage from "./pages/admin/AdminReportsPage";
 
-function getAdminElement(section, item) {
+const adminSection = adminSections[0];
+
+function getAdminElement(item) {
   if (item.slug === "dashboard") {
-    return <AdminDashboardPage section={section} />;
+    return <AdminDashboardPage section={adminSection} />;
   }
 
   if (item.slug === "orders") {
@@ -32,8 +39,28 @@ function getAdminElement(section, item) {
     return <AdminProductsPage />;
   }
 
+  if (item.slug === "purchases") {
+    return <AdminPurchasesPage />;
+  }
+
   if (item.slug === "inventory") {
     return <AdminInventoryPage />;
+  }
+
+  if (item.slug === "packaging") {
+    return <AdminPackagingPage />;
+  }
+
+  if (item.slug === "expenses") {
+    return <AdminExpensesPage />;
+  }
+
+  if (item.slug === "finance") {
+    return <AdminFinancePage />;
+  }
+
+  if (item.slug === "reports") {
+    return <AdminReportsPage />;
   }
 
   if (item.slug === "categories") {
@@ -44,38 +71,35 @@ function getAdminElement(section, item) {
 }
 
 const adminRoutes = [
-  { index: true, element: <Navigate to={adminSections[0].basePath} replace /> },
-  ...adminSections.map((section) => ({
-    path: section.key,
-    children: section.items
-      .filter((item) => item.action !== "logout")
-      .flatMap((item) => {
-        if (item.slug === "products") {
-          return [
-            {
-              path: "products",
-              element: <AdminProductsPage />
-            },
-            {
-              path: "products/new",
-              element: <AdminProductsPage />
-            },
-            {
-              path: "products/:productId",
-              element: <AdminProductsPage />
-            }
-          ];
-        }
-
+  { index: true, element: <Navigate to={adminSection.basePath} replace /> },
+  ...adminSection.items
+    .filter((item) => item.action !== "logout")
+    .flatMap((item) => {
+      if (item.slug === "products") {
         return [
           {
-            index: item.slug === "dashboard",
-            path: item.slug === "dashboard" ? undefined : item.slug,
-            element: getAdminElement(section, item)
+            path: "products",
+            element: <AdminProductsPage />
+          },
+          {
+            path: "products/new",
+            element: <AdminProductsPage />
+          },
+          {
+            path: "products/:productId",
+            element: <AdminProductsPage />
           }
         ];
-      })
-  }))
+      }
+
+      return [
+        {
+          index: item.slug === "dashboard",
+          path: item.slug === "dashboard" ? undefined : item.slug,
+          element: getAdminElement(item)
+        }
+      ];
+    })
 ];
 
 const router = createBrowserRouter([

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { message } from "antd";
+import { useCurrency } from "./CurrencyContext";
 
 const CartContext = createContext(null);
 
@@ -9,6 +10,7 @@ export function CartProvider({ children }) {
     return saved ? JSON.parse(saved) : [];
   });
   const [messageApi, contextHolder] = message.useMessage();
+  const { convertAmount } = useCurrency();
 
   useEffect(() => {
     localStorage.setItem("nuva_cart", JSON.stringify(items));
@@ -53,16 +55,34 @@ export function CartProvider({ children }) {
 
   const totals = useMemo(() => {
     const subtotal = items.reduce(
-      (sum, item) => sum + (item.displayPrice ?? item.price) * item.quantity,
+      (sum, item) =>
+        sum +
+        convertAmount(item.displayPrice ?? item.price, item.currency || "AED") * item.quantity,
       0
     );
-    const shipping = items.length ? 20 : 0;
+    const shipping = items.length ? convertAmount(20, "AED") : 0;
     return {
       subtotal,
       shipping,
       total: subtotal + shipping
     };
-  }, [items]);
+  }, [convertAmount, items]);
+
+  const baseTotals = useMemo(() => {
+    const subtotal = items.reduce(
+      (sum, item) =>
+        sum +
+        convertAmount(item.displayPrice ?? item.price, item.currency || "AED", "AED") * item.quantity,
+      0
+    );
+    const shipping = items.length ? 20 : 0;
+
+    return {
+      subtotal,
+      shipping,
+      total: subtotal + shipping
+    };
+  }, [convertAmount, items]);
 
   return (
     <CartContext.Provider
@@ -73,6 +93,7 @@ export function CartProvider({ children }) {
         removeFromCart,
         clearCart,
         totals,
+        baseTotals,
         itemCount: items.reduce((sum, item) => sum + item.quantity, 0)
       }}
     >

@@ -7,7 +7,7 @@
     "categoryName": "Rings",
     "price": 280,
     "salePrice": 240,
-    "currency": "AED",
+    "currency": "INR",
     "images": [
       {
         "url": "https://your-cdn-domain.com/products/celeste-diamond-ring-1.jpg",
@@ -38,7 +38,7 @@
     "categoryName": "Necklaces",
     "price": 340,
     "salePrice": 299,
-    "currency": "AED",
+    "currency": "INR",
     "images": [
       {
         "url": "https://your-cdn-domain.com/products/solene-pendant-necklace-1.jpg",
@@ -69,7 +69,7 @@
     "categoryName": "Earrings",
     "price": 220,
     "salePrice": null,
-    "currency": "AED",
+    "currency": "INR",
     "images": [
       {
         "url": "https://your-cdn-domain.com/products/auric-drop-earrings-1.jpg",
@@ -100,7 +100,7 @@
     "categoryName": "Bracelets",
     "price": 195,
     "salePrice": 175,
-    "currency": "AED",
+    "currency": "INR",
     "images": [
       {
         "url": "https://your-cdn-domain.com/products/lune-chain-bracelet-1.jpg",

@@ -1,9 +1,11 @@
 import { Card, Table, Tag } from "antd";
 import { useEffect, useState } from "react";
 import { getMyOrders } from "../services/orderService";
+import { useCurrency } from "../context/CurrencyContext";
 
 export default function MyOrdersPage() {
   const [orders, setOrders] = useState([]);
+  const { formatMoney } = useCurrency();
 
   useEffect(() => {
     getMyOrders().then(setOrders);
@@ -30,7 +32,7 @@ export default function MyOrdersPage() {
             {
               title: "Total",
               dataIndex: "totalAmount",
-              render: (value) => `$${value}`
+              render: (value, record) => formatMoney(value, record.currency || "AED")
             },
             {
               title: "Payment",

@@ -8,7 +8,7 @@ export const mockProducts = [
     categoryName: "Rings",
     price: 280,
     salePrice: 240,
-    currency: "AED",
+    currency: "INR",
     stock: 7,
     lowStockLimit: 3,
     images: [
@@ -40,7 +40,7 @@ export const mockProducts = [
     categoryName: "Necklaces",
     price: 340,
     salePrice: 299,
-    currency: "AED",
+    currency: "INR",
     stock: 12,
     lowStockLimit: 4,
     images: [
@@ -72,7 +72,7 @@ export const mockProducts = [
     categoryName: "Earrings",
     price: 220,
     salePrice: null,
-    currency: "AED",
+    currency: "INR",
     stock: 2,
     lowStockLimit: 3,
     images: [
@@ -104,7 +104,7 @@ export const mockProducts = [
     categoryName: "Bracelets",
     price: 195,
     salePrice: 175,
-    currency: "AED",
+    currency: "INR",
     stock: 9,
     lowStockLimit: 3,
     images: [

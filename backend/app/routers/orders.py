@@ -17,6 +17,20 @@ def to_object_id(value: str) -> ObjectId:
     return ObjectId(value)
 
 
+def build_stock_movement(*, previous_stock: int, new_stock: int, order_id: str) -> dict:
+    return {
+        "type": "order_placed",
+        "previousStock": max(0, int(previous_stock)),
+        "newStock": max(0, int(new_stock)),
+        "quantityChange": int(new_stock) - int(previous_stock),
+        "note": "Stock reduced after order placement.",
+        "actorId": None,
+        "actorName": None,
+        "orderId": order_id,
+        "createdAt": datetime.now(timezone.utc),
+    }
+
+
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_order(payload: OrderCreate, current_user=Depends(get_current_user)):
     db = get_database()
@@ -41,9 +55,21 @@ async def create_order(payload: OrderCreate, current_user=Depends(get_current_us
     result = await db.orders.insert_one(order_data)
 
     for item in payload.items:
+        product = await db.products.find_one({"_id": to_object_id(item.productId)})
+        previous_stock = int(product.get("stock", 0))
+        new_stock = max(0, previous_stock - item.quantity)
         await db.products.update_one(
             {"_id": to_object_id(item.productId)},
-            {"$inc": {"stock": -item.quantity}, "$set": {"updatedAt": now}},
+            {
+                "$inc": {"stock": -item.quantity},
+                "$push": {
+                    "stockMovements": {
+                        "$each": [build_stock_movement(previous_stock=previous_stock, new_stock=new_stock, order_id=str(result.inserted_id))],
+                        "$slice": -20,
+                    }
+                },
+                "$set": {"updatedAt": now},
+            },
         )
 
     order = await db.orders.find_one({"_id": result.inserted_id})

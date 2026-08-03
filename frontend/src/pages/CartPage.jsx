@@ -1,9 +1,11 @@
 import { Button, Card, Col, Empty, InputNumber, List, Row } from "antd";
 import { Link } from "react-router-dom";
 import { useCart } from "../context/CartContext";
+import { useCurrency } from "../context/CurrencyContext";
 
 export default function CartPage() {
   const { items, totals, updateQuantity, removeFromCart } = useCart();
+  const { formatMoney } = useCurrency();
 
   return (
     <div className="page-wrap">
@@ -41,7 +43,10 @@ export default function CartPage() {
                         />
                       }
                       title={item.name}
-                      description={`${item.material} | ${item.currency} ${item.displayPrice ?? item.price}`}
+                      description={`${item.material} | ${formatMoney(
+                        item.displayPrice ?? item.price,
+                        item.currency || "AED",
+                      )}`}
                     />
                   </List.Item>
                 )}
@@ -52,15 +57,15 @@ export default function CartPage() {
             <Card title="Order Summary" className="nuva-card">
               <div className="summary-row">
                 <span>Subtotal</span>
-                <strong>AED {totals.subtotal}</strong>
+                <strong>{formatMoney(totals.subtotal)}</strong>
               </div>
               <div className="summary-row">
                 <span>Shipping</span>
-                <strong>AED {totals.shipping}</strong>
+                <strong>{formatMoney(totals.shipping)}</strong>
               </div>
               <div className="summary-row summary-total">
                 <span>Total</span>
-                <strong>AED {totals.total}</strong>
+                <strong>{formatMoney(totals.total)}</strong>
               </div>
               <Link to="/checkout">
                 <Button type="primary" size="large" block>

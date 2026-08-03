@@ -1,8 +1,12 @@
+import logging
+
 import certifi
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 from app.core.config import settings
+from app.core.sku import ensure_default_sku_reference_data, ensure_sku_indexes
 
+logger = logging.getLogger(__name__)
 client: AsyncIOMotorClient | None = None
 database: AsyncIOMotorDatabase | None = None
 
@@ -17,8 +21,16 @@ async def connect_to_mongo():
         connectTimeoutMS=5000,
         socketTimeoutMS=10000,
     )
-    await client.admin.command("ping")
-    database = client[settings.mongodb_db_name]
+    try:
+        await client.admin.command("ping")
+        database = client[settings.mongodb_db_name]
+        await ensure_sku_indexes(database)
+        await ensure_default_sku_reference_data(database)
+    except Exception as error:
+        logger.warning("MongoDB unavailable during startup. Running without database: %s", error)
+        client.close()
+        client = None
+        database = None
 
 
 async def close_mongo_connection():

@@ -3,14 +3,16 @@ import { ShoppingOutlined } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { useCart } from "../context/CartContext";
+import { useCurrency } from "../context/CurrencyContext";
 
 export default function CartDrawer() {
   const [open, setOpen] = useState(false);
   const { items, itemCount, removeFromCart, totals } = useCart();
+  const { formatMoney } = useCurrency();
 
   return (
     <>
-      <Badge count={itemCount} color="#C9A227">
+      <Badge count={itemCount} color="#A13043">
         <Button
           shape="circle"
           icon={<ShoppingOutlined />}
@@ -45,7 +47,10 @@ export default function CartDrawer() {
                       />
                     }
                     title={item.name}
-                    description={`Qty ${item.quantity} x $${item.price}`}
+                    description={`Qty ${item.quantity} x ${formatMoney(
+                      item.price,
+                      item.currency || "AED",
+                    )}`}
                   />
                 </List.Item>
               )}
@@ -57,7 +62,7 @@ export default function CartDrawer() {
             >
               <div className="drawer-total">
                 <span>Total</span>
-                <strong>${totals.total}</strong>
+                <strong>{formatMoney(totals.total)}</strong>
               </div>
               <Link to="/cart" onClick={() => setOpen(false)}>
                 <Button type="primary" block>
