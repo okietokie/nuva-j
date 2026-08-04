@@ -156,19 +156,31 @@ export default function CategoryModal({
       forceRender
       centered={!isMobile}
       title={
-        <div className="category-modal-titlebar">
+        <div className={`category-modal-titlebar${isMobile ? " is-mobile" : ""}`}>
           <div>
-            <Typography.Title level={4}>Manage Categories</Typography.Title>
-            <Typography.Paragraph>
-              Organize product types, keep category codes tidy, and update the catalog structure in one place.
-            </Typography.Paragraph>
+            {isMobile ? (
+              <>
+                <span className="category-modal-kicker">Category Setup</span>
+                <Typography.Title level={2}>Add Category</Typography.Title>
+                <Typography.Paragraph>
+                  Create a clean category your client can use comfortably while building product listings.
+                </Typography.Paragraph>
+              </>
+            ) : (
+              <>
+                <Typography.Title level={4}>Manage Categories</Typography.Title>
+                <Typography.Paragraph>
+                  Organize product types, keep category codes tidy, and update the catalog structure in one place.
+                </Typography.Paragraph>
+              </>
+            )}
           </div>
         </div>
       }
       className="catalog-category-modal"
     >
-      <div className="category-modal-shell">
-        <div className="category-modal-list">
+      <div className={`category-modal-shell${isMobile ? " is-mobile" : ""}`}>
+        <div className={`category-modal-list${isMobile ? " category-modal-panel" : ""}`}>
           <div className="category-modal-section-head">
             <div>
               <strong>Existing Categories</strong>
@@ -237,7 +249,18 @@ export default function CategoryModal({
           />
         </div>
 
-        <div className="category-modal-form">
+        <div className={`category-modal-form${isMobile ? " category-modal-panel" : ""}`}>
+          {isMobile ? (
+            <div className="category-mobile-progress-card">
+              <div className="category-mobile-progress-badge">
+                {editingCategory ? "Edit" : "New"}
+              </div>
+              <div className="category-mobile-progress-copy">
+                <span>{editingCategory ? "Updating category" : "Step 1 of 1"}</span>
+                <strong>{editingCategory ? "Category Details" : "Basic Details"}</strong>
+              </div>
+            </div>
+          ) : null}
           <div className="category-form-head">
             <div>
               <h4>{editingCategory ? "Edit Category" : "Add Category"}</h4>
@@ -247,6 +270,7 @@ export default function CategoryModal({
             </div>
             <Button
               type="primary"
+              className="category-form-reset-button"
               icon={<PlusOutlined />}
               disabled={!canManage}
               onClick={() => {
@@ -289,7 +313,7 @@ export default function CategoryModal({
 
             <div className="category-form-card">
               <Form.Item label="Description" name="description">
-                <Input.TextArea rows={4} disabled={!canManage} placeholder="Short category description" />
+                <Input.TextArea rows={isMobile ? 5 : 4} disabled={!canManage} placeholder="Short category description" />
               </Form.Item>
               <Form.Item label="Category Image" name="imageUrl">
                 <Input disabled={!canManage} placeholder="https://..." />

@@ -2344,16 +2344,52 @@
   color: #2d2116;
 }
 
+.category-modal-titlebar h2.ant-typography {
+  margin: 10px 0 8px;
+  font-family: "Cormorant Garamond", "Times New Roman", serif;
+  font-size: clamp(2.3rem, 5vw, 3.4rem);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  color: #341b26;
+}
+
 .category-modal-titlebar .ant-typography {
   margin-bottom: 0;
   color: rgba(45, 33, 22, 0.62);
   line-height: 1.55;
 }
 
+.category-modal-titlebar.is-mobile {
+  text-align: center;
+  padding: 8px 22px 0;
+}
+
+.category-modal-kicker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(244, 229, 190, 0.45);
+  border: 1px solid rgba(214, 176, 110, 0.22);
+  color: #a06f1a;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .category-modal-shell {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
   gap: 22px;
+}
+
+.category-modal-shell.is-mobile {
+  display: flex;
+  flex-direction: column;
 }
 
 .category-modal-list,
@@ -2363,6 +2399,12 @@
   padding: 18px;
   background: rgba(255, 255, 255, 0.84);
   box-shadow: 0 14px 34px rgba(111, 85, 40, 0.06);
+}
+
+.category-modal-panel {
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.92), rgba(255, 248, 244, 0.92)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 250, 247, 0.94));
 }
 
 .category-modal-list .ant-input-search {
@@ -2406,10 +2448,62 @@
   line-height: 1.55;
 }
 
+.category-form-reset-button {
+  min-height: 42px;
+  padding-inline: 16px;
+  border-radius: 14px;
+}
+
 .category-modal-form-grid {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.category-mobile-progress-card {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 18px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(232, 194, 195, 0.68);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(255, 246, 247, 0.96), rgba(255, 250, 245, 0.94)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 248, 244, 0.94));
+}
+
+.category-mobile-progress-badge {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(247, 225, 229, 0.96), rgba(255, 244, 246, 0.98));
+  color: #6e3141;
+  font-size: 1.1rem;
+  font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76);
+}
+
+.category-mobile-progress-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.category-mobile-progress-copy span {
+  color: rgba(45, 33, 22, 0.56);
+  font-size: 0.86rem;
+}
+
+.category-mobile-progress-copy strong {
+  color: #341b26;
+  font-size: 1.35rem;
+  font-family: "Cormorant Garamond", "Times New Roman", serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .category-form-card {
@@ -2816,8 +2910,19 @@
     border-radius: 26px 26px 0 0;
   }
 
+  .catalog-category-modal .ant-modal-close {
+    top: 18px;
+    inset-inline-end: 18px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.86);
+    border: 1px solid rgba(214, 176, 110, 0.26);
+    box-shadow: 0 12px 26px rgba(111, 85, 40, 0.1);
+  }
+
   .catalog-category-modal .ant-modal-header {
-    padding: 22px 18px 0;
+    padding: 28px 18px 0;
   }
 
   .catalog-category-modal .ant-modal-body {
@@ -2833,6 +2938,17 @@
   .category-form-card {
     padding: 16px;
     border-radius: 18px;
+  }
+
+  .category-form-head h4 {
+    font-size: 1.6rem;
+    font-family: "Cormorant Garamond", "Times New Roman", serif;
+    letter-spacing: -0.02em;
+    color: #341b26;
+  }
+
+  .category-form-head p {
+    font-size: 0.92rem;
   }
 
   .category-form-inline {
@@ -2855,6 +2971,31 @@
     display: grid !important;
     grid-template-columns: 1fr;
     gap: 10px;
+  }
+
+  .category-modal-form-actions .ant-btn {
+    min-height: 50px;
+    border-radius: 16px;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .category-modal-list .ant-table-wrapper {
+    margin-top: 6px;
+  }
+
+  .category-modal-list .ant-table {
+    border-radius: 18px;
+    overflow: hidden;
+  }
+
+  .category-modal-list .ant-table-thead > tr > th {
+    font-size: 0.72rem;
+  }
+
+  .category-modal-list .ant-btn[type="text"] {
+    min-height: 40px;
+    border-radius: 12px;
   }
 
   .catalog-form-stage-head p {

@@ -1,5 +1,6 @@
 import re
 
+from bson import ObjectId
 from pymongo import ASCENDING, ReturnDocument
 
 DEFAULT_CATEGORY_CODES = [
@@ -128,12 +129,10 @@ async def get_variant_code_lookup(db) -> dict[tuple[str, str], str]:
 async def resolve_category_code(db, *, category_id: str | None, category_name: str | None) -> str:
     category = None
     if category_id:
-        category = await db.categories.find_one({"_id": {"$oid": category_id}})
-    if not category and category_id:
-        from bson import ObjectId
-
         if ObjectId.is_valid(category_id):
             category = await db.categories.find_one({"_id": ObjectId(category_id)})
+        else:
+            category = await db.categories.find_one({"_id": category_id})
     if not category and category_name:
         category = await db.categories.find_one({"name": normalize_label(category_name)})
 
