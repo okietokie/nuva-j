@@ -107,64 +107,6 @@ async def bulk_delete_categories(
     }
 
 
-@router.get("/{category_id}")
-async def get_admin_category(
-    category_id: str,
-    _admin=Depends(require_permission("categories.read")),
-):
-    db = get_database()
-    category = await db.categories.find_one({"_id": to_object_id(category_id)})
-    return serialize_document(category)
-
-
-@router.put("/{category_id}")
-async def update_category(
-    category_id: str,
-    payload: CategoryUpdate,
-    _admin=Depends(require_permission("categories.manage")),
-):
-    db = get_database()
-    object_id = to_object_id(category_id)
-    existing_category = await db.categories.find_one({"_id": object_id})
-    if not existing_category:
-        raise HTTPException(status_code=404, detail="Category not found.")
-    updates = normalize_category_updates(payload.model_dump(exclude_unset=True))
-    if updates.get("code"):
-        existing_code = await db.categories.find_one({"code": updates["code"], "_id": {"$ne": object_id}})
-        if existing_code:
-            raise HTTPException(status_code=400, detail="Category code must be unique.")
-    updates["updatedAt"] = datetime.now(timezone.utc)
-    await db.categories.update_one({"_id": object_id}, {"$set": updates})
-    if "name" in updates or "code" in updates:
-        product_updates = {"updatedAt": datetime.now(timezone.utc)}
-        if "name" in updates:
-            product_updates["categoryName"] = updates["name"]
-        if "code" in updates:
-            product_updates["categoryCode"] = updates["code"]
-        await db.products.update_many(
-            {"categoryId": category_id},
-            {"$set": product_updates},
-        )
-    category = await db.categories.find_one({"_id": object_id})
-    return serialize_document(category)
-
-
-@router.delete("/{category_id}")
-async def delete_category(
-    category_id: str,
-    _admin=Depends(require_permission("categories.manage")),
-):
-    db = get_database()
-    result = await try_delete_category(db, category_id)
-    if result.success:
-        return {"message": "Category deleted successfully.", "result": result.model_dump()}
-    if result.reason == "Category not found.":
-        raise HTTPException(status_code=404, detail=result.reason)
-    if result.reason == "Invalid category id.":
-        raise HTTPException(status_code=400, detail=result.reason)
-    raise HTTPException(status_code=409, detail=result.reason)
-
-
 @router.get("/variant-codes")
 async def get_admin_variant_codes(_admin=Depends(require_permission("categories.read"))):
     db = get_database()
@@ -242,5 +184,63 @@ async def delete_variant_code(
     if result.reason == "Variant code not found.":
         raise HTTPException(status_code=404, detail=result.reason)
     if result.reason == "Invalid variant code id.":
+        raise HTTPException(status_code=400, detail=result.reason)
+    raise HTTPException(status_code=409, detail=result.reason)
+
+
+@router.get("/{category_id}")
+async def get_admin_category(
+    category_id: str,
+    _admin=Depends(require_permission("categories.read")),
+):
+    db = get_database()
+    category = await db.categories.find_one({"_id": to_object_id(category_id)})
+    return serialize_document(category)
+
+
+@router.put("/{category_id}")
+async def update_category(
+    category_id: str,
+    payload: CategoryUpdate,
+    _admin=Depends(require_permission("categories.manage")),
+):
+    db = get_database()
+    object_id = to_object_id(category_id)
+    existing_category = await db.categories.find_one({"_id": object_id})
+    if not existing_category:
+        raise HTTPException(status_code=404, detail="Category not found.")
+    updates = normalize_category_updates(payload.model_dump(exclude_unset=True))
+    if updates.get("code"):
+        existing_code = await db.categories.find_one({"code": updates["code"], "_id": {"$ne": object_id}})
+        if existing_code:
+            raise HTTPException(status_code=400, detail="Category code must be unique.")
+    updates["updatedAt"] = datetime.now(timezone.utc)
+    await db.categories.update_one({"_id": object_id}, {"$set": updates})
+    if "name" in updates or "code" in updates:
+        product_updates = {"updatedAt": datetime.now(timezone.utc)}
+        if "name" in updates:
+            product_updates["categoryName"] = updates["name"]
+        if "code" in updates:
+            product_updates["categoryCode"] = updates["code"]
+        await db.products.update_many(
+            {"categoryId": category_id},
+            {"$set": product_updates},
+        )
+    category = await db.categories.find_one({"_id": object_id})
+    return serialize_document(category)
+
+
+@router.delete("/{category_id}")
+async def delete_category(
+    category_id: str,
+    _admin=Depends(require_permission("categories.manage")),
+):
+    db = get_database()
+    result = await try_delete_category(db, category_id)
+    if result.success:
+        return {"message": "Category deleted successfully.", "result": result.model_dump()}
+    if result.reason == "Category not found.":
+        raise HTTPException(status_code=404, detail=result.reason)
+    if result.reason == "Invalid category id.":
         raise HTTPException(status_code=400, detail=result.reason)
     raise HTTPException(status_code=409, detail=result.reason)

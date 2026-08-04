@@ -172,13 +172,19 @@ async def get_next_design_number_preview(db, category_code: str) -> int:
 
 async def reserve_design_number(db, category_code: str) -> int:
     existing_value = await get_existing_max_design_number(db, category_code)
+    await db.sku_counters.update_one(
+        {"categoryCode": category_code},
+        {"$setOnInsert": {"categoryCode": category_code, "lastUsedNumber": existing_value}},
+        upsert=True,
+    )
+    if existing_value:
+        await db.sku_counters.update_one(
+            {"categoryCode": category_code, "lastUsedNumber": {"$lt": existing_value}},
+            {"$set": {"lastUsedNumber": existing_value}},
+        )
     counter = await db.sku_counters.find_one_and_update(
         {"categoryCode": category_code},
-        {
-            "$setOnInsert": {"categoryCode": category_code, "lastUsedNumber": existing_value},
-            "$inc": {"lastUsedNumber": 1},
-        },
-        upsert=True,
+        {"$inc": {"lastUsedNumber": 1}},
         return_document=ReturnDocument.AFTER,
     )
     return int(counter.get("lastUsedNumber") or 0)
