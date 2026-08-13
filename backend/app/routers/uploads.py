@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from app.db.mongodb import get_database
 from app.dependencies.auth import require_permission
 from app.services.b2_service import (
+    StorageConfigurationError,
     delete_image_from_b2,
     list_product_images_from_b2,
     upload_image_to_b2_with_metadata,
@@ -20,7 +21,10 @@ async def upload_product_image(
         raise HTTPException(status_code=400, detail="Only image uploads are allowed.")
 
     content = await file.read()
-    upload = await upload_image_to_b2_with_metadata(file.filename, content, file.content_type)
+    try:
+        upload = await upload_image_to_b2_with_metadata(file.filename, content, file.content_type)
+    except StorageConfigurationError as error:
+        raise HTTPException(status_code=502, detail="Image storage is misconfigured.") from error
     return upload
 
 
@@ -39,7 +43,10 @@ async def get_orphaned_product_images(_admin=Depends(require_permission("product
         if image.get("key")
     }
 
-    bucket_images = await list_product_images_from_b2()
+    try:
+        bucket_images = await list_product_images_from_b2()
+    except StorageConfigurationError as error:
+        raise HTTPException(status_code=502, detail="Image storage is misconfigured.") from error
     return [image for image in bucket_images if image["key"] not in used_keys]
 
 
@@ -71,12 +78,17 @@ async def delete_orphaned_product_image(
     if product:
         raise HTTPException(status_code=409, detail="Image is already linked to a saved product.")
 
-    bucket_images = await list_product_images_from_b2(prefix=key)
+    try:
+        bucket_images = await list_product_images_from_b2(prefix=key)
+    except StorageConfigurationError as error:
+        raise HTTPException(status_code=502, detail="Image storage is misconfigured.") from error
     if not any(image.get("key") == key for image in bucket_images):
         raise HTTPException(status_code=404, detail="Image not found.")
 
     try:
         await delete_image_from_b2(key)
+    except StorageConfigurationError as error:
+        raise HTTPException(status_code=502, detail="Image storage is misconfigured.") from error
     except Exception as error:
         raise HTTPException(status_code=502, detail="Unable to delete image from storage.") from error
 

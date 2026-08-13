@@ -9,6 +9,8 @@ import {
 } from "@ant-design/icons";
 import Cropper from "react-easy-crop";
 
+const { Dragger } = Upload;
+
 export default function ProductImageUploader({
   images,
   onUpload,
@@ -48,7 +50,14 @@ export default function ProductImageUploader({
     <>
       <div className="product-image-uploader">
         <div className="image-upload-dropzone">
-          <Upload customRequest={onUpload} showUploadList={false} multiple>
+          <Dragger
+            customRequest={onUpload}
+            showUploadList={false}
+            multiple
+            accept="image/png,image/jpeg,image/webp"
+            disabled={uploading}
+            openFileDialogOnClick={!uploading}
+          >
             <div className={`image-upload-trigger${uploading ? " is-uploading" : ""}`}>
               <div className="image-upload-trigger-icon">
                 <UploadOutlined />
@@ -61,7 +70,7 @@ export default function ProductImageUploader({
                 </span>
               </div>
             </div>
-          </Upload>
+          </Dragger>
         </div>
 
         {images.length ? (

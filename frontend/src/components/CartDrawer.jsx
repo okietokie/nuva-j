@@ -1,4 +1,4 @@
-import { Badge, Button, Drawer, Empty, List, Space } from "antd";
+import { Badge, Button, Drawer, Empty, InputNumber } from "antd";
 import { ShoppingOutlined } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 import { useState } from "react";
@@ -7,7 +7,7 @@ import { useCurrency } from "../context/CurrencyContext";
 
 export default function CartDrawer() {
   const [open, setOpen] = useState(false);
-  const { items, itemCount, removeFromCart, totals } = useCart();
+  const { items, itemCount, removeFromCart, updateQuantity, totals } = useCart();
   const { formatMoney } = useCurrency();
 
   return (
@@ -20,59 +20,50 @@ export default function CartDrawer() {
         />
       </Badge>
       <Drawer
-        title="Your Cart"
+        title="Your Bag"
         placement="right"
         onClose={() => setOpen(false)}
         open={open}
         width={380}
+        className="mobile-menu"
       >
         {items.length ? (
-          <>
-            <List
-              dataSource={items}
-              renderItem={(item) => (
-                <List.Item
-                  actions={[
-                    <Button type="link" onClick={() => removeFromCart(item._id)} key="remove">
-                      Remove
-                    </Button>
-                  ]}
-                >
-                  <List.Item.Meta
-                    avatar={
-                      <img
-                        src={item.images?.[0] || item.image}
-                        alt={item.name}
-                        style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 12 }}
-                      />
-                    }
-                    title={item.name}
-                    description={`Qty ${item.quantity} x ${formatMoney(
-                      item.price,
-                      item.currency || "AED",
-                    )}`}
+          <div className="search-panel">
+            {items.map((item) => (
+              <div key={item._id} className="cart-line">
+                <img src={item.primaryImage} alt={item.displayName} className="cart-thumb" />
+                <div className="cart-copy">
+                  <h3>{item.displayName}</h3>
+                  <p>{formatMoney(item.displayPrice ?? item.price, item.currency || "AED")}</p>
+                </div>
+                <div className="cart-line-actions">
+                  <InputNumber
+                    min={1}
+                    max={Math.max(item.stock, 1)}
+                    value={item.quantity}
+                    onChange={(value) => updateQuantity(item._id, value || 1)}
                   />
-                </List.Item>
-              )}
-            />
-            <Space
-              direction="vertical"
-              size="middle"
-              style={{ width: "100%", marginTop: 24 }}
-            >
-              <div className="drawer-total">
-                <span>Total</span>
-                <strong>{formatMoney(totals.total)}</strong>
+                  <Button type="link" onClick={() => removeFromCart(item._id)}>
+                    Remove
+                  </Button>
+                </div>
               </div>
-              <Link to="/cart" onClick={() => setOpen(false)}>
-                <Button type="primary" block>
-                  View Cart
-                </Button>
+            ))}
+            <div className="cart-summary-line is-total">
+              <span>Subtotal</span>
+              <strong>{formatMoney(totals.subtotal)}</strong>
+            </div>
+            <div className="search-footer-actions">
+              <Link to="/shop" onClick={() => setOpen(false)}>
+                <Button>Continue shopping</Button>
               </Link>
-            </Space>
-          </>
+              <Link to="/cart" onClick={() => setOpen(false)}>
+                <Button type="primary">Go to cart</Button>
+              </Link>
+            </div>
+          </div>
         ) : (
-          <Empty description="Your cart is waiting for something beautiful." />
+          <Empty description="Your bag is still empty." />
         )}
       </Drawer>
     </>

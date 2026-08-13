@@ -67,7 +67,7 @@ function getWorkflowStatusLabel(workflowStatus) {
     draft: "Draft",
     image_pending: "Image Pending",
     ready_to_publish: "Ready to Publish",
-    published: "Published",
+    published: "Publish",
     archived: "Archived"
   };
 
@@ -120,6 +120,16 @@ function normalizeStockMovement(movement) {
   };
 }
 
+export function calculateSuggestedSellingPrice(totalProductCost, profitPercentage = 35) {
+  const safeTotalProductCost = asNumber(totalProductCost, 0);
+  const safeProfitPercentage = Math.max(0, asNumber(profitPercentage, 35));
+  if (!safeTotalProductCost) {
+    return 0;
+  }
+
+  return Number((safeTotalProductCost * (1 + safeProfitPercentage / 100)).toFixed(2));
+}
+
 export function normalizeProduct(product) {
   const safeProduct = product || {};
   const images = (safeProduct.images || [])
@@ -127,7 +137,7 @@ export function normalizeProduct(product) {
     .filter((image) => image.url);
 
   const normalizedCurrency = asTrimmedString(safeProduct.currency).toUpperCase();
-  const sourceCurrency = normalizedCurrency === "AED" ? "INR" : normalizedCurrency || "INR";
+  const sourceCurrency = normalizedCurrency || "AED";
   const name = asTrimmedString(safeProduct.name);
   const categoryName = asTrimmedString(safeProduct.categoryName || safeProduct.category);
   const categoryCode = asTrimmedString(safeProduct.categoryCode);
@@ -142,9 +152,17 @@ export function normalizeProduct(product) {
   const totalProductCost =
     asNumber(safeProduct.totalProductCost, 0) ||
     purchaseTotalCost + directProductExpense + allocatedBatchExpense + packagingCost;
+  const storedSuggestedSellingPrice = asNumber(safeProduct.suggestedSellingPrice, 0);
+  const derivedProfitPercentage =
+    totalProductCost > 0 && storedSuggestedSellingPrice > 0
+      ? Number((((storedSuggestedSellingPrice / totalProductCost) - 1) * 100).toFixed(2))
+      : 35;
+  const profitPercentage = Math.max(
+    0,
+    asNumber(safeProduct.profitPercentage, derivedProfitPercentage),
+  );
   const suggestedSellingPrice =
-    asNumber(safeProduct.suggestedSellingPrice, 0) ||
-    (totalProductCost ? Number((totalProductCost * 1.35).toFixed(2)) : 0);
+    storedSuggestedSellingPrice || calculateSuggestedSellingPrice(totalProductCost, profitPercentage);
   const hasCoreDetails =
     Boolean(name && name !== "Untitled Product") &&
     Boolean(categoryName) &&
@@ -227,6 +245,7 @@ export function normalizeProduct(product) {
     packagingProfileId: safeProduct.packagingProfileId || "",
     packagingProfileLabel: safeProduct.packagingProfileLabel || "",
     totalProductCost,
+    profitPercentage,
     suggestedSellingPrice,
     taxIncluded: safeProduct.taxIncluded ?? true,
     allowBackorder: Boolean(safeProduct.allowBackorder),
@@ -315,6 +334,7 @@ export function buildProductPayload(values = {}) {
     packagingProfileId: asTrimmedString(values.packagingProfileId),
     packagingProfileLabel: asTrimmedString(values.packagingProfileLabel),
     totalProductCost: Math.max(0, asNumber(values.totalProductCost, 0)),
+    profitPercentage: Math.max(0, asNumber(values.profitPercentage, 35)),
     suggestedSellingPrice: Math.max(0, asNumber(values.suggestedSellingPrice, 0)),
     taxIncluded: asBoolean(values.taxIncluded, true),
     allowBackorder: asBoolean(values.allowBackorder, false),

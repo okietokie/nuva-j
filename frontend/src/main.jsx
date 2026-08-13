@@ -7,16 +7,20 @@ import theme from "./theme";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
+import { WishlistProvider } from "./context/WishlistContext";
 import "./styles/global.css";
+import "./styles/storefront.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ConfigProvider theme={theme}>
       <CurrencyProvider>
         <AuthProvider>
-          <CartProvider>
-            <RouterProvider router={router} />
-          </CartProvider>
+          <WishlistProvider>
+            <CartProvider>
+              <RouterProvider router={router} />
+            </CartProvider>
+          </WishlistProvider>
         </AuthProvider>
       </CurrencyProvider>
     </ConfigProvider>

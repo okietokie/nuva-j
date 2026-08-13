@@ -54,6 +54,15 @@ def build_stock_movement(
     }
 
 
+def calculate_suggested_selling_price(total_product_cost: float, profit_percentage: float = 35) -> float:
+    safe_total_product_cost = max(0, float(total_product_cost or 0))
+    safe_profit_percentage = max(0, float(profit_percentage or 0))
+    if safe_total_product_cost <= 0:
+        return 0.0
+
+    return round(safe_total_product_cost * (1 + safe_profit_percentage / 100), 2)
+
+
 def normalize_product_payload(payload: dict) -> dict:
     name = (payload.get("name") or "").strip()
     if name:
@@ -83,7 +92,11 @@ def normalize_product_payload(payload: dict) -> dict:
     payload["allocatedBatchExpense"] = max(0, float(payload.get("allocatedBatchExpense") or 0))
     payload["packagingCost"] = max(0, float(payload.get("packagingCost") or 0))
     payload["totalProductCost"] = max(0, float(payload.get("totalProductCost") or 0))
-    payload["suggestedSellingPrice"] = max(0, float(payload.get("suggestedSellingPrice") or 0))
+    payload["profitPercentage"] = max(0, float(payload.get("profitPercentage") or 35))
+    payload["suggestedSellingPrice"] = calculate_suggested_selling_price(
+        payload["totalProductCost"],
+        payload["profitPercentage"],
+    )
 
     for key in ("size", "weight", "plating", "stoneType", "occasion", "careInstructions"):
         if payload.get(key):
@@ -176,6 +189,7 @@ def normalize_product_updates(updates: dict) -> dict:
         "allocatedBatchExpense",
         "packagingCost",
         "totalProductCost",
+        "profitPercentage",
         "suggestedSellingPrice",
     ):
         if key in normalized and normalized[key] is not None:

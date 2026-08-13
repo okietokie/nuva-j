@@ -1,6 +1,7 @@
 import json
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import urlparse
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -52,6 +53,15 @@ class Settings(BaseSettings):
             return [item.strip() for item in stripped_value.split(",") if item.strip()]
 
         return value
+
+    @field_validator("b2_endpoint_url")
+    @classmethod
+    def validate_b2_endpoint_url(cls, value: str) -> str:
+        endpoint = value.strip()
+        parsed = urlparse(endpoint)
+        if parsed.scheme != "https" or not parsed.netloc:
+            raise ValueError("b2_endpoint_url must be a valid https URL.")
+        return endpoint
 
 
 @lru_cache

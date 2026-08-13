@@ -89,6 +89,9 @@ export default function ProductFormPage() {
         status: "draft",
         visibility: "hidden",
         lowStockLimit: 3,
+        profitPercentage: 35,
+        suggestedSellingPrice: 0,
+        totalProductCost: 0,
         taxIncluded: true,
         allowBackorder: false,
         tags: [],
@@ -155,7 +158,10 @@ export default function ProductFormPage() {
   const handleSubmit = async (values) => {
     setSaving(true);
     try {
-      const payload = buildProductPayload(values);
+      const payload = buildProductPayload({
+        ...form.getFieldsValue(true),
+        ...values
+      });
 
       if (isEdit) {
         await updateProduct(productId, payload);

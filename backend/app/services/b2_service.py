@@ -10,14 +10,22 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
+class StorageConfigurationError(RuntimeError):
+    pass
+
+
 def get_b2_client():
-    return boto3.client(
-        "s3",
-        endpoint_url=settings.b2_endpoint_url,
-        aws_access_key_id=settings.b2_access_key_id,
-        aws_secret_access_key=settings.b2_secret_access_key,
-        region_name=settings.b2_region,
-    )
+    try:
+        return boto3.client(
+            "s3",
+            endpoint_url=settings.b2_endpoint_url,
+            aws_access_key_id=settings.b2_access_key_id,
+            aws_secret_access_key=settings.b2_secret_access_key,
+            region_name=settings.b2_region,
+        )
+    except ValueError as error:
+        logger.exception("Invalid Backblaze B2 endpoint configuration.")
+        raise StorageConfigurationError("Backblaze B2 endpoint is misconfigured.") from error
 
 
 async def upload_image_to_b2(file_name: str, content: bytes, content_type: str) -> str:
@@ -57,12 +65,14 @@ async def upload_image_to_b2_with_metadata(file_name: str, content: bytes, conte
 
 
 async def list_product_images_from_b2(prefix: str | None = None) -> list[dict]:
-    client = get_b2_client()
     try:
+        client = get_b2_client()
         request = {"Bucket": settings.b2_bucket_name}
         if prefix:
             request["Prefix"] = prefix
         response = client.list_objects_v2(**request)
+    except StorageConfigurationError:
+        raise
     except (ClientError, BotoCoreError) as error:
         logger.warning("Unable to list product images from Backblaze B2: %s", error)
         return []

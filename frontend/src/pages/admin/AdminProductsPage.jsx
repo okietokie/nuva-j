@@ -5,9 +5,11 @@ import {
   BoxPlotOutlined,
   DeleteOutlined,
   FileTextOutlined,
+  FolderAddOutlined,
   InboxOutlined,
   PlusOutlined,
   ProfileOutlined,
+  ReloadOutlined,
   RightOutlined,
   TagOutlined,
   WarningOutlined
@@ -74,7 +76,7 @@ function buildCatalogStats(products) {
     },
     {
       key: "published",
-      label: "Published",
+      label: "Publish",
       value: products.filter((product) => product.workflowStatus === "published").length,
       icon: <BoxPlotOutlined />,
       tone: "active"
@@ -207,6 +209,7 @@ export default function AdminProductsPage() {
 
   const stats = useMemo(() => buildCatalogStats(products), [products]);
   const summary = useMemo(() => getCatalogSummary(products), [products]);
+  const isRefreshing = loading || orphanLoading;
 
   const closeDrawer = () => {
     navigate(productsBasePath);
@@ -359,22 +362,41 @@ export default function AdminProductsPage() {
 
   return (
     <div className="catalog-admin-page">
-      <Card className="nuva-card catalog-shell-card">
+      <Card className="nuva-card catalog-shell-card catalog-header-card">
         <div className="catalog-header-shell">
-          <div>
-            <h2>Products</h2>
-            <p>
+          <div className="catalog-header-content">
+            <h1>Products</h1>
+            <p className="catalog-header-description">
               Manage one complete record for each NUVA product, including workflow readiness,
               media, pricing, and shared stock details.
             </p>
           </div>
 
           <div className="catalog-header-actions">
-            <Button onClick={handleImportProducts}>Refresh Records</Button>
-            <Button onClick={() => setCategoryModalOpen(true)} disabled={!canManageCategories}>
+            <Button
+              className="catalog-header-button catalog-header-button-refresh"
+              icon={<ReloadOutlined />}
+              onClick={handleImportProducts}
+              loading={isRefreshing}
+              disabled={isRefreshing}
+            >
+              Refresh
+            </Button>
+            <Button
+              className="catalog-header-button catalog-header-button-secondary"
+              icon={<FolderAddOutlined />}
+              onClick={() => setCategoryModalOpen(true)}
+              disabled={!canManageCategories}
+            >
               Add Category
             </Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={openNewProduct} disabled={!canCreate}>
+            <Button
+              type="primary"
+              className="catalog-header-button catalog-header-button-primary"
+              icon={<PlusOutlined />}
+              onClick={openNewProduct}
+              disabled={!canCreate}
+            >
               Add Product
             </Button>
           </div>

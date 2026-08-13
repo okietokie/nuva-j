@@ -9,11 +9,13 @@ from app.routers import (
     admin_categories,
     admin_products,
     admin_purchases,
+    admin_staff,
     auth,
     categories,
     orders,
     products,
     uploads,
+    website,
 )
 
 
@@ -38,10 +40,12 @@ app.include_router(auth.router, prefix=settings.api_v1_prefix)
 app.include_router(admin_products.router, prefix=settings.api_v1_prefix)
 app.include_router(admin_categories.router, prefix=settings.api_v1_prefix)
 app.include_router(admin_purchases.router, prefix=settings.api_v1_prefix)
+app.include_router(admin_staff.router, prefix=settings.api_v1_prefix)
 app.include_router(categories.router, prefix=settings.api_v1_prefix)
 app.include_router(products.router, prefix=settings.api_v1_prefix)
 app.include_router(orders.router, prefix=settings.api_v1_prefix)
 app.include_router(uploads.router, prefix=settings.api_v1_prefix)
+app.include_router(website.router, prefix=settings.api_v1_prefix)
 
 
 @app.get("/")

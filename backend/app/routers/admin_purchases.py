@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.db.mongodb import get_database
 from app.dependencies.auth import require_permission
-from app.routers.products import maybe_object_id
+from app.routers.products import calculate_suggested_selling_price, maybe_object_id
 from app.schemas.purchase import (
     PurchaseBatchCreate,
     PurchaseBatchUpdate,
@@ -156,13 +156,26 @@ async def sync_batch_products(db, batch_id: str, batch_data: dict, admin_user: d
         if not product_id or not ObjectId.is_valid(product_id):
             continue
 
+        product = await db.products.find_one(
+            {"_id": ObjectId(product_id)},
+            {"profitPercentage": 1, "suggestedSellingPrice": 1, "totalProductCost": 1},
+        )
+        existing_total_product_cost = float((product or {}).get("totalProductCost") or 0)
+        existing_suggested_selling_price = float((product or {}).get("suggestedSellingPrice") or 0)
+        derived_profit_percentage = (
+            ((existing_suggested_selling_price / existing_total_product_cost) - 1) * 100
+            if existing_total_product_cost > 0 and existing_suggested_selling_price > 0
+            else 35
+        )
+        profit_percentage = max(0, float((product or {}).get("profitPercentage") or derived_profit_percentage))
+
         total_product_cost = round(
             float(item["totalPurchaseCost"])
             + float(item.get("allocatedSharedExpense", 0))
             + float(item.get("manualAllocatedSharedExpense", 0)),
             2,
         )
-        suggested_selling_price = round(total_product_cost * 1.35, 2) if total_product_cost else 0.0
+        suggested_selling_price = calculate_suggested_selling_price(total_product_cost, profit_percentage)
 
         await db.products.update_one(
             {"_id": ObjectId(product_id)},
@@ -177,6 +190,7 @@ async def sync_batch_products(db, batch_id: str, batch_data: dict, admin_user: d
                     "purchaseTotalCost": float(item["totalPurchaseCost"]),
                     "allocatedBatchExpense": float(item.get("allocatedSharedExpense", 0)),
                     "totalProductCost": total_product_cost,
+                    "profitPercentage": round(profit_percentage, 2),
                     "suggestedSellingPrice": suggested_selling_price,
                     "updatedAt": datetime.now(timezone.utc),
                     "updatedBy": maybe_object_id(admin_user.get("id")),

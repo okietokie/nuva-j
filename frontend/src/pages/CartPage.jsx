@@ -1,4 +1,4 @@
-import { Button, Card, Col, Empty, InputNumber, List, Row } from "antd";
+import { Button, Empty, InputNumber } from "antd";
 import { Link } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useCurrency } from "../context/CurrencyContext";
@@ -8,73 +8,63 @@ export default function CartPage() {
   const { formatMoney } = useCurrency();
 
   return (
-    <div className="page-wrap">
-      <section className="page-heading">
-        <span className="eyebrow">Cart</span>
-        <h1>Your selection</h1>
+    <div className="store-page">
+      <section className="page-intro">
+        <span className="section-kicker">Cart</span>
+        <h1>Your bag</h1>
+        <p>Review your selected pieces, adjust quantity, and continue to checkout when ready.</p>
       </section>
       {items.length ? (
-        <Row gutter={[24, 24]}>
-          <Col xs={24} lg={16}>
-            <Card className="nuva-card">
-              <List
-                dataSource={items}
-                renderItem={(item) => (
-                  <List.Item
-                    actions={[
-                      <InputNumber
-                        key="qty"
-                        min={1}
-                        max={item.stock}
-                        value={item.quantity}
-                        onChange={(value) => updateQuantity(item._id, value)}
-                      />,
-                      <Button key="remove" type="link" onClick={() => removeFromCart(item._id)}>
-                        Remove
-                      </Button>
-                    ]}
-                  >
-                    <List.Item.Meta
-                      avatar={
-                        <img
-                          src={item.primaryImage}
-                          alt={item.name}
-                          style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 16 }}
-                        />
-                      }
-                      title={item.name}
-                      description={`${item.material} | ${formatMoney(
-                        item.displayPrice ?? item.price,
-                        item.currency || "AED",
-                      )}`}
-                    />
-                  </List.Item>
-                )}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} lg={8}>
-            <Card title="Order Summary" className="nuva-card">
-              <div className="summary-row">
-                <span>Subtotal</span>
-                <strong>{formatMoney(totals.subtotal)}</strong>
+        <div className="cart-grid">
+          <section>
+            {items.map((item) => (
+              <div key={item._id} className="cart-line">
+                <img src={item.primaryImage} alt={item.displayName} className="cart-thumb" />
+                <div className="cart-copy">
+                  <h3>{item.displayName}</h3>
+                  <p>{item.displayCategory}</p>
+                  <p>{formatMoney(item.displayPrice ?? item.price, item.currency || "AED")}</p>
+                </div>
+                <div className="cart-line-actions">
+                  <InputNumber
+                    min={1}
+                    max={Math.max(item.stock, 1)}
+                    value={item.quantity}
+                    onChange={(value) => updateQuantity(item._id, value || 1)}
+                  />
+                  <Button type="link" onClick={() => removeFromCart(item._id)}>
+                    Remove
+                  </Button>
+                </div>
               </div>
-              <div className="summary-row">
-                <span>Shipping</span>
-                <strong>{formatMoney(totals.shipping)}</strong>
-              </div>
-              <div className="summary-row summary-total">
-                <span>Total</span>
-                <strong>{formatMoney(totals.total)}</strong>
-              </div>
-              <Link to="/checkout">
-                <Button type="primary" size="large" block>
-                  Continue to Checkout
-                </Button>
+            ))}
+          </section>
+          <section>
+            <div className="cart-summary-line">
+              <span>Subtotal</span>
+              <strong>{formatMoney(totals.subtotal)}</strong>
+            </div>
+            <div className="cart-summary-line">
+              <span>Shipping</span>
+              <strong>{formatMoney(totals.shipping)}</strong>
+            </div>
+            <div className="cart-summary-line is-total">
+              <span>Total</span>
+              <strong>{formatMoney(totals.total)}</strong>
+            </div>
+            <p className="muted-copy">
+              Delivery options and final payment details are confirmed on the next step.
+            </p>
+            <div className="search-footer-actions">
+              <Link to="/shop">
+                <Button>Continue Shopping</Button>
               </Link>
-            </Card>
-          </Col>
-        </Row>
+              <Link to="/checkout">
+                <Button type="primary">Checkout</Button>
+              </Link>
+            </div>
+          </section>
+        </div>
       ) : (
         <Empty description="Your cart is empty. Discover the collection in the shop.">
           <Link to="/shop">

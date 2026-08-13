@@ -1,27 +1,24 @@
 const theme = {
   token: {
-    colorPrimary: "#A13043",
-    colorInfo: "#A13043",
-    colorSuccess: "#C55A6E",
-    colorWarning: "#D26488",
-    colorError: "#A02642",
-    colorBgBase: "#DFCFCF",
-    colorTextBase: "#2F1E24",
-    colorBorderSecondary: "#E5CDC9",
-    borderRadius: 18,
+    colorPrimary: "#7C3149",
+    colorInfo: "#7C3149",
+    colorSuccess: "#6E8D67",
+    colorWarning: "#B6845B",
+    colorError: "#8B394C",
+    colorBgBase: "#FFFAF8",
+    colorTextBase: "#4F2F3B",
+    colorBorderSecondary: "#EADDD7",
+    borderRadius: 20,
     fontFamily: "'Manrope', sans-serif"
   },
   components: {
-    Layout: {
-      bodyBg: "#DFCFCF",
-      headerBg: "rgba(229, 205, 201, 0.88)"
-    },
-    Card: {
-      colorBgContainer: "#E8C2C3"
-    },
     Button: {
       defaultShadow: "none",
-      primaryShadow: "none"
+      primaryShadow: "none",
+      borderRadius: 999
+    },
+    Card: {
+      colorBgContainer: "#FFFEFD"
     }
   }
 };

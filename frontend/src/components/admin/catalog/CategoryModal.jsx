@@ -6,6 +6,7 @@ import {
   Input,
   InputNumber,
   Modal,
+  Select,
   Space,
   Table,
   Tag,
@@ -45,11 +46,15 @@ export default function CategoryModal({
   const [form] = Form.useForm();
   const [query, setQuery] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const watchedIsActive = Form.useWatch("isActive", form);
 
   useEffect(() => {
     if (!open) {
       setEditingCategory(null);
+      setDeleteTarget(null);
       setQuery("");
       form.resetFields();
       return;
@@ -126,25 +131,38 @@ export default function CategoryModal({
   };
 
   const handleDelete = (category) => {
-    const usageCount = usageCounts.get(category._id) || 0;
+    setDeleteTarget(category);
+  };
 
-    Modal.confirm({
-      title: `Delete ${category.name}?`,
-      content:
-        usageCount > 0
-          ? `This category is used by ${usageCount} products. Move products before deleting.`
-          : "This category will be removed from the catalog.",
-      okButtonProps: { danger: true, disabled: usageCount > 0 || !canManage },
-      onOk: async () => {
-        try {
-          await deleteCategory(category._id);
-          message.success("Category deleted.");
-          await onUpdated();
-        } catch (error) {
-          message.error(getApiErrorMessage(error, "Category delete failed."));
-        }
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) {
+      return;
+    }
+
+    setDeleteLoading(true);
+    try {
+      await deleteCategory(deleteTarget._id);
+      if (editingCategory?._id === deleteTarget._id) {
+        setEditingCategory(null);
+        form.resetFields();
+        form.setFieldsValue({
+          name: "",
+          code: "",
+          slug: "",
+          description: "",
+          imageUrl: "",
+          sortOrder: categories.length,
+          isActive: true
+        });
       }
-    });
+      setDeleteTarget(null);
+      message.success("Category deleted.");
+      await onUpdated();
+    } catch (error) {
+      message.error(getApiErrorMessage(error, "Category delete failed."));
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   return (
@@ -319,17 +337,15 @@ export default function CategoryModal({
                 <Input disabled={!canManage} placeholder="https://..." />
               </Form.Item>
               <Form.Item label="Status" name="isActive">
-                <select
-                  className="plain-select"
+                <Select
                   disabled={!canManage}
-                  value={form.getFieldValue("isActive") ? "active" : "inactive"}
-                  onChange={(event) =>
-                    form.setFieldValue("isActive", event.target.value === "active")
-                  }
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
+                  value={watchedIsActive === false ? "inactive" : "active"}
+                  onChange={(value) => form.setFieldValue("isActive", value === "active")}
+                  options={[
+                    { value: "active", label: "Active" },
+                    { value: "inactive", label: "Inactive" }
+                  ]}
+                />
               </Form.Item>
             </div>
             <Space className="category-modal-form-actions">
@@ -341,6 +357,31 @@ export default function CategoryModal({
           </Form>
         </div>
       </div>
+
+      <Modal
+        open={Boolean(deleteTarget)}
+        title={deleteTarget ? `Delete ${deleteTarget.name}?` : "Delete category?"}
+        okText="Delete"
+        cancelText="Cancel"
+        okButtonProps={{
+          danger: true,
+          loading: deleteLoading,
+          disabled:
+            !canManage || ((deleteTarget && usageCounts.get(deleteTarget._id)) || 0) > 0
+        }}
+        onOk={handleDeleteConfirm}
+        onCancel={() => {
+          if (!deleteLoading) {
+            setDeleteTarget(null);
+          }
+        }}
+      >
+        <p>
+          {deleteTarget && (usageCounts.get(deleteTarget._id) || 0) > 0
+            ? `This category is used by ${usageCounts.get(deleteTarget._id) || 0} products. Move products before deleting.`
+            : "This category will be removed from the catalog."}
+        </p>
+      </Modal>
     </Modal>
   );
 }

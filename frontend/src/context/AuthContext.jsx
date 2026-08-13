@@ -53,7 +53,27 @@ export function AuthProvider({ children }) {
     if (user.role === "super_admin") {
       return true;
     }
-    return (user.permissions || []).includes(permission);
+    return (user.permissions || []).includes(permission) || (user.sensitivePermissions || []).includes(permission);
+  };
+
+  const hasWorkspaceAccess = (workspace) => {
+    if (!user) {
+      return false;
+    }
+    if (user.role === "super_admin") {
+      return true;
+    }
+    return Boolean(user.workspaceAccess?.[workspace]);
+  };
+
+  const canViewSensitive = (permission) => {
+    if (!user) {
+      return false;
+    }
+    if (user.role === "super_admin") {
+      return true;
+    }
+    return (user.sensitivePermissions || []).includes(permission);
   };
 
   return (
@@ -65,8 +85,10 @@ export function AuthProvider({ children }) {
         register,
         logout,
         hasPermission,
+        hasWorkspaceAccess,
+        canViewSensitive,
         isAuthenticated: Boolean(user),
-        isAdmin: user?.role === "admin" || user?.role === "super_admin"
+        isAdmin: Boolean(user?.canAccessAdmin)
       }}
     >
       {contextHolder}

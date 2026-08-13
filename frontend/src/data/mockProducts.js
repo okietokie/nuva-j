@@ -1,8 +1,8 @@
 export const mockProducts = [
   {
     _id: "nuva-ring-1",
-    name: "Celeste Diamond Ring",
-    description: "A delicate gold ring with a radiant center stone crafted for timeless evenings.",
+    name: "Celeste Ring",
+    description: "A delicate ring with a clean silhouette and a soft polished finish.",
     slug: "celeste-diamond-ring",
     categoryId: "rings",
     categoryName: "Rings",
@@ -20,7 +20,7 @@ export const mockProducts = [
       }
     ],
     sku: "NUVA-RING-001",
-    material: "18K Gold",
+    material: "Gold tone",
     color: "Warm Gold",
     size: "Adjustable",
     weight: "8g",
@@ -34,7 +34,7 @@ export const mockProducts = [
   {
     _id: "nuva-necklace-1",
     name: "Solene Pendant Necklace",
-    description: "A fine pendant necklace with a sculpted silhouette and a soft reflective finish.",
+    description: "A pendant necklace with a sculpted silhouette and a softly reflective finish.",
     slug: "solene-pendant-necklace",
     categoryId: "necklaces",
     categoryName: "Necklaces",
@@ -52,7 +52,7 @@ export const mockProducts = [
       }
     ],
     sku: "NUVA-NECK-001",
-    material: "Gold Vermeil",
+    material: "Metal tone",
     color: "Champagne Gold",
     size: "18 inches",
     weight: "12g",
@@ -66,7 +66,7 @@ export const mockProducts = [
   {
     _id: "nuva-earrings-1",
     name: "Auric Drop Earrings",
-    description: "Elegant drop earrings designed for graceful movement and a premium modern look.",
+    description: "Drop earrings designed for graceful movement and a modern look.",
     slug: "auric-drop-earrings",
     categoryId: "earrings",
     categoryName: "Earrings",
@@ -84,7 +84,7 @@ export const mockProducts = [
       }
     ],
     sku: "NUVA-EARR-001",
-    material: "14K Gold",
+    material: "Gold tone",
     color: "Soft Gold",
     size: "Medium",
     weight: "10g",
@@ -98,7 +98,7 @@ export const mockProducts = [
   {
     _id: "nuva-bracelet-1",
     name: "Lune Chain Bracelet",
-    description: "A refined bracelet with balanced links, subtle shine, and understated luxury.",
+    description: "A bracelet with balanced links, subtle shine, and an easy layered feel.",
     slug: "lune-chain-bracelet",
     categoryId: "bracelets",
     categoryName: "Bracelets",
@@ -116,7 +116,7 @@ export const mockProducts = [
       }
     ],
     sku: "NUVA-BRAC-001",
-    material: "Sterling Silver",
+    material: "Silver tone",
     color: "Moonlight Silver",
     size: "Small to medium",
     weight: "9g",

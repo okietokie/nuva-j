@@ -1,45 +1,43 @@
-import { Button, Card, Col, Row, Tag } from "antd";
-import { Link } from "react-router-dom";
-import { useCurrency } from "../context/CurrencyContext";
+import { Empty, Skeleton } from "antd";
+import ProductCard from "./storefront/ProductCard";
 
-export default function ProductGrid({ products, onAddToCart }) {
-  const { formatMoney } = useCurrency();
+export default function ProductGrid({
+  products,
+  onAddToCart,
+  loading = false,
+  emptyTitle = "No products available right now."
+}) {
+  if (loading) {
+    return (
+      <div className="product-grid">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="surface-card">
+            <Skeleton.Image active style={{ width: "100%", height: 300 }} />
+            <Skeleton active paragraph={{ rows: 3 }} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (!products.length) {
+    return (
+      <div className="empty-panel">
+        <Empty description={emptyTitle} />
+      </div>
+    );
+  }
 
   return (
-    <Row gutter={[24, 24]}>
-      {products.map((product) => (
-        <Col xs={24} sm={12} lg={8} xl={6} key={product._id}>
-          <Card
-            hoverable
-            cover={
-              <img
-                alt={product.displayName}
-                src={product.primaryImage}
-                style={{ height: 300, objectFit: "cover" }}
-              />
-            }
-            className="nuva-card"
-          >
-            <div className="card-topline">
-              <Tag color="gold">{product.displayCategory}</Tag>
-              {product.isFeatured ? <Tag color="brown">Featured</Tag> : null}
-            </div>
-            <h3>{product.displayName}</h3>
-            <p>{product.description}</p>
-            <div className="product-grid-footer">
-              <strong>{formatMoney(product.price, product.currency || "AED")}</strong>
-              <div className="product-grid-actions">
-                <Link to={`/products/${product.slug || product._id}`}>
-                  <Button>Details</Button>
-                </Link>
-                <Button type="primary" onClick={() => onAddToCart(product)}>
-                  Add to Cart
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </Col>
+    <div className="product-grid">
+      {products.map((product, index) => (
+        <ProductCard
+          key={product._id}
+          product={product}
+          onAddToCart={onAddToCart}
+          priority={index < 2}
+        />
       ))}
-    </Row>
+    </div>
   );
 }

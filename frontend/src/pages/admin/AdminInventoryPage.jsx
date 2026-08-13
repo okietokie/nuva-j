@@ -354,7 +354,7 @@ export default function AdminInventoryPage() {
               { label: "Draft", value: "draft" },
               { label: "Image Pending", value: "image_pending" },
               { label: "Ready to Publish", value: "ready_to_publish" },
-              { label: "Published", value: "published" },
+              { label: "Publish", value: "published" },
               { label: "Archived", value: "archived" }
             ]}
           />

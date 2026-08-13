@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, Form, Input, Typography, message } from "antd";
+import { Alert, Button, Form, Input, message } from "antd";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getApiErrorMessage } from "../utils/getApiErrorMessage";
@@ -14,7 +14,7 @@ export default function RegisterPage() {
   useEffect(() => {
     if (!loading && user) {
       messageApi.info("You are already logged in.");
-      navigate(user.role === "admin" || user.role === "super_admin" ? "/admin" : "/", {
+      navigate(user.canAccessAdmin ? "/admin" : "/", {
         replace: true
       });
     }
@@ -44,20 +44,18 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="auth-shell">
+    <div className="auth-wrap">
       {contextHolder}
-      <Card className="nuva-card auth-card">
-        <Typography.Title level={2}>Join NUVA</Typography.Title>
-        <Typography.Paragraph>
-          Create your account to shop, track orders, and save your favorites.
-        </Typography.Paragraph>
+      <section className="auth-panel">
+        <span className="section-kicker">Create Account</span>
+        <h1>Join NUVA</h1>
+        <p className="muted-copy">
+          Create your account to shop, track orders, and save pieces to your wishlist.
+        </p>
+      </section>
+      <section className="auth-panel">
         {feedback ? (
-          <Alert
-            className="auth-alert"
-            type={feedback.type}
-            message={feedback.text}
-            showIcon
-          />
+          <Alert className="auth-alert" type={feedback.type} message={feedback.text} showIcon />
         ) : null}
         <Form layout="vertical" onFinish={onFinish} onValuesChange={() => feedback && setFeedback(null)}>
           <Form.Item label="Full name" name="name" rules={[{ required: true }]}>
@@ -73,10 +71,11 @@ export default function RegisterPage() {
             Register
           </Button>
         </Form>
-        <p style={{ marginTop: 18 }}>
-          Already have an account? <Link to="/login">Login</Link>
-        </p>
-      </Card>
+        <div className="auth-alt">
+          <span>Already have an account?</span>
+          <Link to="/login">Login</Link>
+        </div>
+      </section>
     </div>
   );
 }

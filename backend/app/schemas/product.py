@@ -65,6 +65,7 @@ class ProductBase(BaseModel):
     packagingProfileId: str = ""
     packagingProfileLabel: str = ""
     totalProductCost: float = Field(default=0, ge=0)
+    profitPercentage: float = Field(default=35, ge=0)
     suggestedSellingPrice: float = Field(default=0, ge=0)
     taxIncluded: bool = True
     allowBackorder: bool = False
@@ -139,6 +140,7 @@ class ProductUpdate(BaseModel):
     packagingProfileId: str | None = Field(default=None, max_length=80)
     packagingProfileLabel: str | None = Field(default=None, max_length=160)
     totalProductCost: float | None = Field(default=None, ge=0)
+    profitPercentage: float | None = Field(default=None, ge=0)
     suggestedSellingPrice: float | None = Field(default=None, ge=0)
     taxIncluded: bool | None = None
     allowBackorder: bool | None = None

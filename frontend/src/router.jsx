@@ -3,6 +3,7 @@ import PublicLayout from "./layouts/PublicLayout";
 import AdminLayout from "./layouts/AdminLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
+import AdminWorkspaceGuard from "./components/AdminWorkspaceGuard";
 import { adminSections } from "./admin/adminNavigation";
 import HomePage from "./pages/HomePage";
 import ShopPage from "./pages/ShopPage";
@@ -12,6 +13,7 @@ import CheckoutPage from "./pages/CheckoutPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import MyOrdersPage from "./pages/MyOrdersPage";
+import WishlistPage from "./pages/WishlistPage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import AdminExpensesPage from "./pages/admin/AdminExpensesPage";
 import AdminFinancePage from "./pages/admin/AdminFinancePage";
@@ -23,51 +25,68 @@ import AdminPlaceholderPage from "./pages/admin/AdminPlaceholderPage";
 import AdminProductsPage from "./pages/admin/AdminProductsPage";
 import AdminPurchasesPage from "./pages/admin/AdminPurchasesPage";
 import AdminReportsPage from "./pages/admin/AdminReportsPage";
+import AdminStaffPage from "./pages/admin/AdminStaffPage";
+import AdminWebsitePage from "./pages/admin/AdminWebsitePage";
+import DebugProductFormDrawerPage from "./pages/debug/DebugProductFormDrawerPage";
 
 const adminSection = adminSections[0];
 
 function getAdminElement(item) {
+  const wrapWorkspace = (element) => (
+    <AdminWorkspaceGuard workspace={item.slug === "dashboard" ? "dashboard" : item.slug}>
+      {element}
+    </AdminWorkspaceGuard>
+  );
+
   if (item.slug === "dashboard") {
-    return <AdminDashboardPage section={adminSection} />;
+    return wrapWorkspace(<AdminDashboardPage section={adminSection} />);
   }
 
   if (item.slug === "orders") {
-    return <AdminOrdersPage />;
+    return wrapWorkspace(<AdminOrdersPage />);
   }
 
   if (item.slug === "products") {
-    return <AdminProductsPage />;
+    return wrapWorkspace(<AdminProductsPage />);
   }
 
   if (item.slug === "purchases") {
-    return <AdminPurchasesPage />;
+    return wrapWorkspace(<AdminPurchasesPage />);
   }
 
   if (item.slug === "inventory") {
-    return <AdminInventoryPage />;
+    return wrapWorkspace(<AdminInventoryPage />);
   }
 
   if (item.slug === "packaging") {
-    return <AdminPackagingPage />;
+    return wrapWorkspace(<AdminPackagingPage />);
   }
 
   if (item.slug === "expenses") {
-    return <AdminExpensesPage />;
+    return wrapWorkspace(<AdminExpensesPage />);
   }
 
   if (item.slug === "finance") {
-    return <AdminFinancePage />;
+    return wrapWorkspace(<AdminFinancePage />);
   }
 
   if (item.slug === "reports") {
-    return <AdminReportsPage />;
+    return wrapWorkspace(<AdminReportsPage />);
   }
 
   if (item.slug === "categories") {
-    return <AdminCategoriesPage />;
+    return wrapWorkspace(<AdminCategoriesPage />);
   }
 
-  return <AdminPlaceholderPage title={item.title} />;
+  if (item.slug === "staff") {
+    return wrapWorkspace(<AdminStaffPage />);
+  }
+
+  if (item.slug === "website") {
+    return wrapWorkspace(<AdminWebsitePage />);
+  }
+
+  return wrapWorkspace(<AdminPlaceholderPage title={item.title} />);
 }
 
 const adminRoutes = [
@@ -79,15 +98,15 @@ const adminRoutes = [
         return [
           {
             path: "products",
-            element: <AdminProductsPage />
+            element: getAdminElement(item)
           },
           {
             path: "products/new",
-            element: <AdminProductsPage />
+            element: getAdminElement(item)
           },
           {
             path: "products/:productId",
-            element: <AdminProductsPage />
+            element: getAdminElement(item)
           }
         ];
       }
@@ -102,25 +121,43 @@ const adminRoutes = [
     })
 ];
 
+const publicChildren = [
+  { index: true, element: <HomePage /> },
+  { path: "shop", element: <ShopPage /> },
+  { path: "products/:productSlug", element: <ProductDetailsPage /> },
+  { path: "cart", element: <CartPage /> },
+  { path: "wishlist", element: <WishlistPage /> },
+  { path: "login", element: <LoginPage /> },
+  { path: "register", element: <RegisterPage /> },
+  import.meta.env.DEV ? { path: "debug/product-form-drawer", element: <DebugProductFormDrawerPage /> } : null,
+  {
+    element: <ProtectedRoute />,
+    children: [
+      { path: "checkout", element: <CheckoutPage /> },
+      { path: "orders", element: <MyOrdersPage /> }
+    ]
+  }
+].filter(Boolean);
+
+const previewChildren = [
+  { index: true, element: <HomePage /> },
+  { path: "shop", element: <ShopPage /> },
+  { path: "products/:productSlug", element: <ProductDetailsPage /> },
+  { path: "cart", element: <CartPage /> },
+  { path: "wishlist", element: <WishlistPage /> },
+  { path: "orders", element: <MyOrdersPage /> },
+].filter(Boolean);
+
 const router = createBrowserRouter([
   {
     path: "/",
     element: <PublicLayout />,
-    children: [
-      { index: true, element: <HomePage /> },
-      { path: "shop", element: <ShopPage /> },
-      { path: "products/:productSlug", element: <ProductDetailsPage /> },
-      { path: "cart", element: <CartPage /> },
-      { path: "login", element: <LoginPage /> },
-      { path: "register", element: <RegisterPage /> },
-      {
-        element: <ProtectedRoute />,
-        children: [
-          { path: "checkout", element: <CheckoutPage /> },
-          { path: "orders", element: <MyOrdersPage /> }
-        ]
-      }
-    ]
+    children: publicChildren
+  },
+  {
+    path: "/preview/storefront",
+    element: <PublicLayout previewMode />,
+    children: previewChildren
   },
   {
     element: <AdminRoute />,

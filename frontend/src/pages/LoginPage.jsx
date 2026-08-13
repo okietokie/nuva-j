@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, Form, Input, Typography, message } from "antd";
+import { Alert, Button, Form, Input, message } from "antd";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getApiErrorMessage } from "../utils/getApiErrorMessage";
@@ -15,7 +15,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (!loading && user) {
       messageApi.info("You are already logged in.");
-      navigate(user.role === "admin" || user.role === "super_admin" ? "/admin" : "/", {
+      navigate(user.canAccessAdmin ? "/admin" : "/", {
         replace: true
       });
     }
@@ -38,7 +38,7 @@ export default function LoginPage() {
     try {
       const currentUser = await login(values);
       messageApi.success("Login successful.");
-      navigate(currentUser.role === "admin" || currentUser.role === "super_admin" ? "/admin" : "/", {
+      navigate(currentUser.canAccessAdmin ? "/admin" : "/", {
         replace: true
       });
     } catch (error) {
@@ -52,20 +52,18 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="auth-shell">
+    <div className="auth-wrap">
       {contextHolder}
-      <Card className="nuva-card auth-card">
-        <Typography.Title level={2}>Welcome back</Typography.Title>
-        <Typography.Paragraph>
-          Sign in to continue your NUVA experience.
-        </Typography.Paragraph>
+      <section className="auth-panel">
+        <span className="section-kicker">Account</span>
+        <h1>Welcome back</h1>
+        <p className="muted-copy">
+          Sign in to continue shopping, review orders, and move quickly through checkout.
+        </p>
+      </section>
+      <section className="auth-panel">
         {feedback ? (
-          <Alert
-            className="auth-alert"
-            type={feedback.type}
-            message={feedback.text}
-            showIcon
-          />
+          <Alert className="auth-alert" type={feedback.type} message={feedback.text} showIcon />
         ) : null}
         <Form layout="vertical" onFinish={onFinish} onValuesChange={() => feedback && setFeedback(null)}>
           <Form.Item label="Email" name="email" rules={[{ required: true }]}>
@@ -78,10 +76,11 @@ export default function LoginPage() {
             Login
           </Button>
         </Form>
-        <p style={{ marginTop: 18 }}>
-          New here? <Link to="/register">Create an account</Link>
-        </p>
-      </Card>
+        <div className="auth-alt">
+          <span>New here?</span>
+          <Link to="/register">Create an account</Link>
+        </div>
+      </section>
     </div>
   );
 }

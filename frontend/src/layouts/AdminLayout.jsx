@@ -16,11 +16,24 @@ const { Content } = Layout;
 export default function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout, user } = useAuth();
+  const { logout, user, hasWorkspaceAccess } = useAuth();
   const [messageApi, contextHolder] = message.useMessage();
   const currentSection = findAdminSectionByPath(location.pathname);
   const currentItem = findAdminItemByPath(location.pathname);
-  const groupedItems = getAdminGroups(currentSection);
+  const groupedItems = getAdminGroups(currentSection)
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        if (item.action === "logout") {
+          return true;
+        }
+        if (item.slug === "dashboard") {
+          return hasWorkspaceAccess("dashboard");
+        }
+        return hasWorkspaceAccess(item.slug);
+      })
+    }))
+    .filter((group) => group.items.length > 0);
 
   const handleMenuSelect = (item) => {
     const key = getAdminItemPath(currentSection, item);

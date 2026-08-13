@@ -4,6 +4,7 @@ import certifi
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 from app.core.config import settings
+from app.core.admin import ensure_default_staff_roles
 from app.core.sku import ensure_default_sku_reference_data, ensure_sku_indexes
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ async def connect_to_mongo():
         database = client[settings.mongodb_db_name]
         await ensure_sku_indexes(database)
         await ensure_default_sku_reference_data(database)
+        await ensure_default_staff_roles(database)
     except Exception as error:
         logger.warning("MongoDB unavailable during startup. Running without database: %s", error)
         client.close()

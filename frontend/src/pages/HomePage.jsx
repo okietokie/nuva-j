@@ -1,112 +1,113 @@
-import { Button, Card, Col, Row, Statistic } from "antd";
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { ArrowRightOutlined } from "@ant-design/icons";
+import { Button } from "antd";
+import { Link, useOutletContext } from "react-router-dom";
 import ProductGrid from "../components/ProductGrid";
 import { useCart } from "../context/CartContext";
-import { getCategories } from "../services/categoryService";
-import { getProducts } from "../services/productService";
+import { isWindowActive, normalizeWebsiteConfig } from "../utils/websiteConfig";
 
 export default function HomePage() {
-  const [products, setProducts] = useState([]);
-  const [categoryCount, setCategoryCount] = useState(0);
+  const { products, websiteConfig } = useOutletContext();
   const { addToCart } = useCart();
+  const config = normalizeWebsiteConfig(websiteConfig);
+  const productMap = new Map(products.map((product) => [product._id || product.id, product]));
+  const homepageSections = (config.homepageSections || []).filter(
+    (section) => section.visible && isWindowActive(section.startAt, section.endAt),
+  );
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadHomeData() {
-      const [productResults, categoryResults] = await Promise.allSettled([
-        getProducts(),
-        getCategories()
-      ]);
-
-      if (!isMounted) {
-        return;
-      }
-
-      if (productResults.status === "fulfilled") {
-        setProducts(productResults.value);
-      } else {
-        setProducts([]);
-      }
-
-      if (categoryResults.status === "fulfilled") {
-        setCategoryCount(Array.isArray(categoryResults.value) ? categoryResults.value.length : 0);
-      } else {
-        setCategoryCount(0);
-      }
+  const resolveSectionProducts = (section) => {
+    if (section.type === "new_arrivals") {
+      return products
+        .filter((product) => product.isNewArrival)
+        .slice(0, section.limit || 4);
     }
 
-    loadHomeData();
+    if (section.type === "featured_products") {
+      if (section.selectionMode === "manual") {
+        return (section.productIds || [])
+          .map((id) => productMap.get(id))
+          .filter(Boolean)
+          .slice(0, section.limit || 4);
+      }
+      return products.filter((product) => product.isFeatured).slice(0, section.limit || 4);
+    }
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  const featured = products.filter((product) => product.isFeatured).slice(0, 4);
-  const featuredCount = products.filter((product) => product.isFeatured).length;
-  const inStockCount = products.filter((product) => product.stock > 0).length;
+    return [];
+  };
 
   return (
-    <div className="page-wrap">
-      <section className="hero-panel">
-        <div className="hero-copy">
-          <span className="eyebrow">Modern heirlooms</span>
-          <h1>Jewelry that feels soft, luminous, and unforgettable.</h1>
-          <p>
-            NUVA blends sculptural design with quiet luxury, creating premium pieces for
-            everyday elegance.
-          </p>
-          <div className="hero-actions">
-            <Link to="/shop">
-              <Button type="primary" size="large">
-                Explore the Collection
-              </Button>
-            </Link>
-            <Link to="/register">
-              <Button size="large">Create an Account</Button>
-            </Link>
-          </div>
-        </div>
-        <div className="hero-visual">
-          <img
-            src="https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=1200&q=80"
-            alt="NUVA hero jewelry"
-          />
-        </div>
-      </section>
+    <div className="store-page">
+      {homepageSections.map((section) => {
+        if (section.type === "hero") {
+          return (
+            <section key={section.id} className="hero-editorial">
+              <img
+                src={section.desktopImageUrl || section.mobileImageUrl || "/nuva-hero-editorial.png"}
+                alt={section.imageAlt || "NUVA hero"}
+                className="hero-editorial-image"
+              />
+              <div className="hero-editorial-copy">
+                <span className="section-kicker">{section.subtitle}</span>
+                <h1>{section.title}</h1>
+                <p>{section.body}</p>
+                <div className="hero-actions">
+                  {section.primaryCtaLabel && section.primaryCtaHref ? (
+                    <Link to={section.primaryCtaHref}>
+                      <Button type="primary" size="large">
+                        {section.primaryCtaLabel}
+                      </Button>
+                    </Link>
+                  ) : null}
+                  {section.secondaryCtaLabel && section.secondaryCtaHref ? (
+                    <Link to={section.secondaryCtaHref}>
+                      <Button size="large">{section.secondaryCtaLabel}</Button>
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+            </section>
+          );
+        }
 
-      <Row gutter={[24, 24]} className="stats-row">
-        <Col xs={24} md={8}>
-          <Card className="nuva-card">
-            <Statistic title="Available pieces" value={products.length} />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card className="nuva-card">
-            <Statistic title="Featured designs" value={featuredCount} />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card className="nuva-card">
-            <Statistic
-              title={categoryCount > 0 ? "Active collections" : "Ready to ship"}
-              value={categoryCount > 0 ? categoryCount : inStockCount}
-            />
-          </Card>
-        </Col>
-      </Row>
+        if (section.type === "brand_story") {
+          return (
+            <section key={section.id} className="hero-story">
+              <div>
+                <span className="section-kicker">{section.subtitle}</span>
+                <h2>{section.title}</h2>
+              </div>
+              <p>{section.body}</p>
+            </section>
+          );
+        }
 
-      <section className="section-block">
-        <div className="section-head">
-          <div>
-            <span className="eyebrow">Featured selection</span>
-            <h2>Crafted to elevate the everyday.</h2>
-          </div>
-        </div>
-        <ProductGrid products={featured} onAddToCart={addToCart} />
-      </section>
+        if (section.type === "new_arrivals" || section.type === "featured_products") {
+          const sectionProducts = resolveSectionProducts(section);
+          if (!sectionProducts.length) {
+            return null;
+          }
+
+          return (
+            <section key={section.id}>
+              <div className="section-header">
+                <div>
+                  <span className="section-kicker">{section.subtitle}</span>
+                  <h2>{section.title}</h2>
+                </div>
+                {section.ctaLabel && section.ctaHref ? (
+                  <Link to={section.ctaHref}>
+                    <Button type="link" icon={<ArrowRightOutlined />}>
+                      {section.ctaLabel}
+                    </Button>
+                  </Link>
+                ) : null}
+              </div>
+              <ProductGrid products={sectionProducts} onAddToCart={addToCart} />
+            </section>
+          );
+        }
+
+        return null;
+      })}
     </div>
   );
 }

@@ -3,7 +3,7 @@ const BADGE_STYLES = {
     draft: { label: "Draft", tone: "warning" },
     image_pending: { label: "Image Pending", tone: "amber" },
     ready_to_publish: { label: "Ready to Publish", tone: "ink" },
-    published: { label: "Published", tone: "success" },
+    published: { label: "Publish", tone: "success" },
     archived: { label: "Archived", tone: "neutral" },
     deleted: { label: "Archived", tone: "danger" }
   },
