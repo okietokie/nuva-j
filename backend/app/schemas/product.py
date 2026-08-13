@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 
 ProductStatus = Literal["active", "draft", "archived", "deleted"]
 ProductVisibility = Literal["visible", "hidden"]
+PackagingCostSource = Literal["profile_default", "custom"]
 StockMovementType = Literal[
     "manual_adjustment",
     "restock",
@@ -64,6 +65,7 @@ class ProductBase(BaseModel):
     packagingCost: float = Field(default=0, ge=0)
     packagingProfileId: str = ""
     packagingProfileLabel: str = ""
+    packagingCostSource: PackagingCostSource = "custom"
     totalProductCost: float = Field(default=0, ge=0)
     profitPercentage: float = Field(default=35, ge=0)
     suggestedSellingPrice: float = Field(default=0, ge=0)
@@ -139,6 +141,7 @@ class ProductUpdate(BaseModel):
     packagingCost: float | None = Field(default=None, ge=0)
     packagingProfileId: str | None = Field(default=None, max_length=80)
     packagingProfileLabel: str | None = Field(default=None, max_length=160)
+    packagingCostSource: PackagingCostSource | None = None
     totalProductCost: float | None = Field(default=None, ge=0)
     profitPercentage: float | None = Field(default=None, ge=0)
     suggestedSellingPrice: float | None = Field(default=None, ge=0)

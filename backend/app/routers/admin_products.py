@@ -34,6 +34,38 @@ from app.utils.serializers import serialize_document, serialize_many
 router = APIRouter(prefix="/admin/products", tags=["Admin Products"])
 
 
+async def update_product_document(db, product_id: str, payload: ProductUpdate, admin_user: dict):
+    updates = payload.model_dump(exclude_unset=True)
+    object_id = to_object_id(product_id)
+    existing_product = await db.products.find_one({"_id": object_id})
+    if not existing_product:
+        raise HTTPException(status_code=404, detail="Product not found.")
+
+    next_price = updates.get("price", existing_product["price"])
+    next_sale_price = updates.get("salePrice", existing_product.get("salePrice"))
+    if next_sale_price is not None and next_sale_price >= next_price:
+        raise HTTPException(
+            status_code=400,
+            detail="Sale price must be less than regular price.",
+        )
+
+    updates = normalize_product_updates(updates)
+    if "categoryId" in updates or "categoryName" in updates:
+        resolved_category = await attach_category_details(db, {**existing_product, **updates})
+        updates["categoryId"] = resolved_category["categoryId"]
+        updates["categoryName"] = resolved_category["categoryName"]
+    next_product = normalize_status_visibility({**existing_product, **updates})
+    validate_visibility_rules(next_product)
+    await ensure_unique_product_fields(db, next_product, product_id=product_id)
+
+    updates["visibility"] = next_product["visibility"]
+    updates["updatedAt"] = datetime.now(timezone.utc)
+    updates["updatedBy"] = maybe_object_id(admin_user.get("id"))
+    await db.products.update_one({"_id": object_id}, {"$set": updates})
+    product = await db.products.find_one({"_id": object_id})
+    return serialize_document(product)
+
+
 async def delete_product_images_if_unused(db, product: dict) -> None:
     image_keys = {
         (image.get("key") or "").strip()
@@ -250,35 +282,17 @@ async def admin_update_product(
     _admin=Depends(require_permission("products.update")),
 ):
     db = get_database()
-    updates = payload.model_dump(exclude_unset=True)
-    object_id = to_object_id(product_id)
-    existing_product = await db.products.find_one({"_id": object_id})
-    if not existing_product:
-        raise HTTPException(status_code=404, detail="Product not found.")
+    return await update_product_document(db, product_id, payload, _admin)
 
-    next_price = updates.get("price", existing_product["price"])
-    next_sale_price = updates.get("salePrice", existing_product.get("salePrice"))
-    if next_sale_price is not None and next_sale_price >= next_price:
-        raise HTTPException(
-            status_code=400,
-            detail="Sale price must be less than regular price.",
-        )
 
-    updates = normalize_product_updates(updates)
-    if "categoryId" in updates or "categoryName" in updates:
-        resolved_category = await attach_category_details(db, {**existing_product, **updates})
-        updates["categoryId"] = resolved_category["categoryId"]
-        updates["categoryName"] = resolved_category["categoryName"]
-    next_product = normalize_status_visibility({**existing_product, **updates})
-    validate_visibility_rules(next_product)
-    await ensure_unique_product_fields(db, next_product, product_id=product_id)
-
-    updates["visibility"] = next_product["visibility"]
-    updates["updatedAt"] = datetime.now(timezone.utc)
-    updates["updatedBy"] = maybe_object_id(_admin.get("id"))
-    await db.products.update_one({"_id": object_id}, {"$set": updates})
-    product = await db.products.find_one({"_id": object_id})
-    return serialize_document(product)
+@router.patch("/{product_id}")
+async def admin_patch_product(
+    product_id: str,
+    payload: ProductUpdate,
+    _admin=Depends(require_permission("products.update")),
+):
+    db = get_database()
+    return await update_product_document(db, product_id, payload, _admin)
 
 
 @router.patch("/{product_id}/visibility")

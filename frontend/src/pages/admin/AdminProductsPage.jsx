@@ -36,6 +36,8 @@ import CategoryModal from "../../components/admin/catalog/CategoryModal";
 import ProductFilters from "../../components/admin/catalog/ProductFilters";
 import ProductFormDrawer from "../../components/admin/catalog/ProductFormDrawer";
 import ProductTable from "../../components/admin/catalog/ProductTable";
+import ProductWorkspacePage from "./ProductWorkspacePage";
+import { openProductWorkspace } from "../../utils/productWorkspaceNavigation";
 import "../../styles/adminCatalog.css";
 
 const defaultFilters = {
@@ -139,7 +141,8 @@ export default function AdminProductsPage() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedProductIds, setSelectedProductIds] = useState([]);
   const productsBasePath = useMemo(() => getProductsBasePath(location.pathname), [location.pathname]);
-  const drawerOpen = location.pathname.endsWith("/new") || Boolean(productId);
+  const drawerOpen = location.pathname.endsWith("/new");
+  const workspaceOpen = Boolean(productId);
   const canRead = hasPermission("products.read");
   const canCreate = hasPermission("products.create");
   const canUpdate = hasPermission("products.update");
@@ -249,7 +252,12 @@ export default function AdminProductsPage() {
   };
 
   const openEditProduct = (product) => {
-    navigate(`${productsBasePath}/${product._id}`);
+    openProductWorkspace(navigate, product._id, {
+      section: "overview",
+      from: "products",
+      pathname: "/admin/products",
+      search: location.search
+    });
   };
 
   const handleViewProduct = (product) => {
@@ -265,7 +273,12 @@ export default function AdminProductsPage() {
       });
       message.success("Product record created in draft mode.");
       await refreshAll();
-      navigate(`${productsBasePath}/${product._id}`);
+      openProductWorkspace(navigate, product._id, {
+        section: "overview",
+        from: "products",
+        pathname: "/admin/products",
+        search: location.search
+      });
     } catch (error) {
       message.error(getApiErrorMessage(error, "Draft creation failed."));
     }
@@ -276,7 +289,12 @@ export default function AdminProductsPage() {
       const duplicated = await duplicateProduct(product._id);
       message.success("Product duplicated as draft.");
       await loadCatalog();
-      navigate(`${productsBasePath}/${duplicated._id}`);
+      openProductWorkspace(navigate, duplicated._id, {
+        section: "overview",
+        from: "products",
+        pathname: "/admin/products",
+        search: location.search
+      });
     } catch (error) {
       message.error(getApiErrorMessage(error, "Duplicate failed."));
     }
@@ -400,8 +418,13 @@ export default function AdminProductsPage() {
     </div>
   );
 
+  const mobileActionHeight = isMobile ? (selectionMode ? "64px" : canCreate ? "64px" : "0px") : "0px";
+
   return (
-    <div className="catalog-admin-page">
+    <div
+      className="catalog-admin-page"
+      style={{ "--admin-mobile-action-height": mobileActionHeight }}
+    >
       {isMobile ? (
         <>
           <div className="catalog-mobile-intro">
@@ -599,7 +622,9 @@ export default function AdminProductsPage() {
       )}
 
       <Card className="nuva-card catalog-table-card">
-        {!canRead ? (
+        {workspaceOpen ? (
+          <ProductWorkspacePage onProductSaved={refreshAll} />
+        ) : !canRead ? (
           <Empty description="You do not have permission to view central product records." />
         ) : loading && isMobile ? (
           renderMobileLoadingState()
@@ -651,7 +676,7 @@ export default function AdminProductsPage() {
 
       <ProductFormDrawer
         open={drawerOpen}
-        productId={productId}
+        productId={null}
         categories={categories}
         canCreate={canCreate}
         canUpdate={canUpdate}
@@ -732,7 +757,7 @@ export default function AdminProductsPage() {
         </div>
       </Drawer>
 
-      {isMobile ? (
+      {isMobile && !selectionMode ? (
         <div className="catalog-mobile-add-bar">
           <Button
             type="primary"

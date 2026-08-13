@@ -149,6 +149,8 @@ export function normalizeProduct(product) {
   const directProductExpense = asNumber(safeProduct.directProductExpense, 0);
   const allocatedBatchExpense = asNumber(safeProduct.allocatedBatchExpense, 0);
   const packagingCost = asNumber(safeProduct.packagingCost, 0);
+  const packagingCostSource =
+    safeProduct.packagingCostSource === "profile_default" ? "profile_default" : "custom";
   const totalProductCost =
     asNumber(safeProduct.totalProductCost, 0) ||
     purchaseTotalCost + directProductExpense + allocatedBatchExpense + packagingCost;
@@ -244,6 +246,7 @@ export function normalizeProduct(product) {
     packagingCost,
     packagingProfileId: safeProduct.packagingProfileId || "",
     packagingProfileLabel: safeProduct.packagingProfileLabel || "",
+    packagingCostSource,
     totalProductCost,
     profitPercentage,
     suggestedSellingPrice,
@@ -333,6 +336,8 @@ export function buildProductPayload(values = {}) {
     packagingCost: Math.max(0, asNumber(values.packagingCost, 0)),
     packagingProfileId: asTrimmedString(values.packagingProfileId),
     packagingProfileLabel: asTrimmedString(values.packagingProfileLabel),
+    packagingCostSource:
+      values.packagingCostSource === "profile_default" ? "profile_default" : "custom",
     totalProductCost: Math.max(0, asNumber(values.totalProductCost, 0)),
     profitPercentage: Math.max(0, asNumber(values.profitPercentage, 35)),
     suggestedSellingPrice: Math.max(0, asNumber(values.suggestedSellingPrice, 0)),

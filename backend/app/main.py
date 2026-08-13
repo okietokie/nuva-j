@@ -8,6 +8,7 @@ from app.db.mongodb import close_mongo_connection, connect_to_mongo
 from app.routers import (
     admin_categories,
     admin_products,
+    admin_packaging_profiles,
     admin_purchases,
     admin_staff,
     auth,
@@ -38,6 +39,7 @@ app.add_middleware(
 
 app.include_router(auth.router, prefix=settings.api_v1_prefix)
 app.include_router(admin_products.router, prefix=settings.api_v1_prefix)
+app.include_router(admin_packaging_profiles.router, prefix=settings.api_v1_prefix)
 app.include_router(admin_categories.router, prefix=settings.api_v1_prefix)
 app.include_router(admin_purchases.router, prefix=settings.api_v1_prefix)
 app.include_router(admin_staff.router, prefix=settings.api_v1_prefix)

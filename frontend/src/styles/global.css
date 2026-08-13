@@ -13,6 +13,11 @@
   --muted-plum: rgba(47, 30, 36, 0.72);
   --line-rose: rgba(160, 38, 66, 0.12);
   --shadow-rose: rgba(160, 38, 66, 0.14);
+  --app-viewport-height: 100dvh;
+  --admin-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --admin-mobile-nav-height: 72px;
+  --admin-mobile-nav-offset: calc(var(--admin-mobile-nav-height) + var(--admin-safe-bottom));
+  --admin-mobile-action-height: 0px;
   color: var(--ink-plum);
   background: var(--soft-pink);
   font-family: "Manrope", sans-serif;
@@ -30,6 +35,12 @@ body {
   background:
     radial-gradient(circle at top left, rgba(210, 100, 136, 0.22), transparent 32%),
     linear-gradient(180deg, var(--soft-pink) 0%, var(--pearl-pink) 100%);
+}
+
+html,
+body,
+#root {
+  max-width: 100%;
 }
 
 a {
@@ -1210,6 +1221,14 @@ textarea.ant-input::placeholder,
     background: #faf6f3 !important;
   }
 
+  .admin-shell,
+  .admin-content,
+  .admin-stage-mobile,
+  .admin-main-panel-mobile {
+    min-width: 0;
+    max-width: 100%;
+  }
+
   .admin-mobile-appbar {
     position: sticky;
     top: 0;
@@ -1304,7 +1323,9 @@ textarea.ant-input::placeholder,
   }
 
   .admin-main-panel-mobile {
-    padding: 12px 12px calc(124px + env(safe-area-inset-bottom));
+    padding: 12px 12px
+      calc(var(--admin-mobile-nav-offset) + var(--admin-mobile-action-height) + 24px);
+    overflow-x: clip;
   }
 
   .admin-mobile-bottom-nav {
@@ -1382,35 +1403,40 @@ textarea.ant-input::placeholder,
 
   .admin-main-panel-mobile .ant-tabs-nav {
     margin-bottom: 12px;
+    max-width: 100%;
   }
 
-  .admin-main-panel-mobile .ant-tabs-nav-wrap,
-  .admin-main-panel-mobile .ant-tabs-nav-list {
-    width: 100%;
+  .admin-main-panel-mobile .ant-tabs-nav-wrap {
+    max-width: 100%;
     overflow-x: auto;
+    overflow-y: hidden;
     scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
-  .admin-main-panel-mobile .ant-tabs-nav-wrap::-webkit-scrollbar,
-  .admin-main-panel-mobile .ant-tabs-nav-list::-webkit-scrollbar {
+  .admin-main-panel-mobile .ant-tabs-nav-wrap::-webkit-scrollbar {
     display: none;
+  }
+
+  .admin-main-panel-mobile .ant-tabs-nav-list {
+    width: max-content;
+    min-width: 100%;
   }
 
   .admin-main-panel-mobile .ant-tabs-tab {
     flex: 0 0 auto;
   }
 
-  .admin-main-panel-mobile .ant-table-wrapper {
-    overflow-x: auto;
+  .admin-main-panel-mobile .ant-table-wrapper,
+  .admin-main-panel-mobile .ant-table-container,
+  .admin-main-panel-mobile .ant-table-content {
+    max-width: 100%;
   }
 
-  .admin-main-panel-mobile .ant-table {
-    min-width: 640px;
-  }
-
-  .admin-main-panel-mobile .ant-modal .ant-table,
-  .admin-main-panel-mobile .ant-drawer .ant-table {
-    min-width: 560px;
+  .admin-main-panel-mobile .ant-table-content {
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .admin-main-panel-mobile .inventory-filter-grid,

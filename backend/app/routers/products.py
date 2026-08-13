@@ -79,6 +79,9 @@ def normalize_product_payload(payload: dict) -> dict:
     payload["purchaseBatchId"] = (payload.get("purchaseBatchId") or "").strip() or None
     payload["packagingProfileId"] = (payload.get("packagingProfileId") or "").strip()
     payload["packagingProfileLabel"] = (payload.get("packagingProfileLabel") or "").strip()
+    payload["packagingCostSource"] = (
+        (payload.get("packagingCostSource") or "custom").strip() or "custom"
+    )
     payload["material"] = (payload.get("material") or "").strip()
     payload["color"] = (payload.get("color") or "").strip()
     payload["variantName"] = (payload.get("variantName") or "").strip() or None
@@ -162,7 +165,7 @@ def normalize_product_updates(updates: dict) -> dict:
         if key in normalized:
             normalized[key] = (normalized[key] or "").strip() or None
 
-    for key in ("supplierName", "packagingProfileId", "packagingProfileLabel"):
+    for key in ("supplierName", "packagingProfileId", "packagingProfileLabel", "packagingCostSource"):
         if key in normalized and isinstance(normalized[key], str):
             normalized[key] = normalized[key].strip()
 

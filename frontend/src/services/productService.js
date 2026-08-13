@@ -67,6 +67,26 @@ export const updateProduct = async (productId, payload) => {
   return normalizeProduct(response.data);
 };
 
+export const patchProduct = async (productId, payload) => {
+  const response = await api.patch(`/admin/products/${productId}`, payload);
+  return normalizeProduct(response.data);
+};
+
+export const updateProductCatalog = async (productId, payload) => patchProduct(productId, payload);
+
+export const updateProductPricing = async (productId, payload) => patchProduct(productId, payload);
+
+export const updateProductInventorySettings = async (productId, payload) =>
+  patchProduct(productId, payload);
+
+export const updateProductMedia = async (productId, payload) => patchProduct(productId, payload);
+
+export const updateProductVariants = async (productId, payload) => patchProduct(productId, payload);
+
+export const updateProductPackaging = async (productId, payload) => patchProduct(productId, payload);
+
+export const updateProductWorkflow = async (productId, payload) => patchProduct(productId, payload);
+
 export const duplicateProduct = async (productId) => {
   const response = await api.post(`/admin/products/${productId}/duplicate`);
   return normalizeProduct(response.data);

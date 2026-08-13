@@ -12,7 +12,9 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import AdminKpiSection from "../../components/admin/AdminKpiSection";
 import { useCurrency } from "../../context/CurrencyContext";
-import { getProducts, updateProduct } from "../../services/productService";
+import { getProducts, updateProductPackaging } from "../../services/productService";
+import { getPackagingProfiles, updatePackagingProfile } from "../../services/packagingProfileService";
+import { openProductWorkspace } from "../../utils/productWorkspaceNavigation";
 import "../../styles/adminCatalog.css";
 
 const defaultFilters = {
@@ -21,61 +23,12 @@ const defaultFilters = {
   packaging: "all"
 };
 
-const PACKAGING_PROFILE_STORAGE_KEY = "nuva_packaging_profile_costs";
-
-const defaultPackagingProfiles = [
-  {
-    id: "standard-core",
-    label: "Standard Core",
-    cost: 2,
-    appliesTo: "Everyday catalog pieces",
-    matcher: (product) => !product.tags?.includes("gift") && product.workflowStatus !== "published"
-  },
-  {
-    id: "premium-finish",
-    label: "Premium Finish",
-    cost: 5,
-    appliesTo: "Published pieces and elevated presentation",
-    matcher: (product) => product.workflowStatus === "published"
-  },
-  {
-    id: "gift-box",
-    label: "Gift Box",
-    cost: 6,
-    appliesTo: "Gift-led occasions and gifting tags",
-    matcher: (product) => product.tags?.includes("gift") || product.occasion === "Gift"
-  },
-  {
-    id: "luxury-bridal",
-    label: "Luxury Bridal",
-    cost: 10,
-    appliesTo: "Wedding and premium presentation items",
-    matcher: (product) => product.occasion === "Wedding"
-  }
-];
-
 function normalizePackagingCost(value, fallback = 0) {
   const numericValue = Number.parseFloat(value);
   if (!Number.isFinite(numericValue) || numericValue < 0) {
     return fallback;
   }
   return Number(numericValue.toFixed(2));
-}
-
-function loadPackagingProfiles() {
-  if (typeof window === "undefined") {
-    return defaultPackagingProfiles;
-  }
-
-  try {
-    const savedCosts = JSON.parse(localStorage.getItem(PACKAGING_PROFILE_STORAGE_KEY) || "{}");
-    return defaultPackagingProfiles.map((profile) => ({
-      ...profile,
-      cost: normalizePackagingCost(savedCosts[profile.id], profile.cost)
-    }));
-  } catch {
-    return defaultPackagingProfiles;
-  }
 }
 
 function getPackagingReadiness(product) {
@@ -114,8 +67,18 @@ function getPackingPriority(product) {
   return { label: "Normal", color: "green" };
 }
 
-function getRecommendedProfile(product, profiles = defaultPackagingProfiles) {
-  return profiles.find((profile) => profile.matcher(product)) || profiles[0];
+function getRecommendedProfile(product, profiles = []) {
+  if (!profiles.length) return null;
+  if (product.occasion === "Wedding") {
+    return profiles.find((profile) => profile.name === "Luxury Bridal") || profiles[0];
+  }
+  if (product.tags?.includes("gift") || product.occasion === "Gift") {
+    return profiles.find((profile) => profile.name === "Gift Box") || profiles[0];
+  }
+  if (product.workflowStatus === "published") {
+    return profiles.find((profile) => profile.name === "Premium Finish") || profiles[0];
+  }
+  return profiles.find((profile) => profile.name === "Standard Core") || profiles[0];
 }
 
 function buildPackagingStats(products) {
@@ -164,56 +127,62 @@ function buildPackagingStats(products) {
   ];
 }
 
-function getPackagingRecommendation(product, profiles = defaultPackagingProfiles) {
+function getPackagingRecommendation(product, profiles = []) {
   const readiness = getPackagingReadiness(product).label;
   const profile = getRecommendedProfile(product, profiles);
+  if (!profile) return "No packaging profile recommendation is available yet.";
   if (readiness === "Packaging Missing" && product.workflowStatus === "published") {
-    return `Apply ${profile.label} before relying on live margin and dispatch readiness.`;
+    return `Apply ${profile.name} before relying on live margin and dispatch readiness.`;
   }
   if (readiness === "Packaging Missing") {
-    return `Set packaging cost with the ${profile.label} profile while this item is being prepared.`;
+    return `Set packaging cost with the ${profile.name} profile while this item is being prepared.`;
   }
   if (readiness === "Waiting for Stock") {
     return "Packaging is set. Revisit once stock is replenished.";
   }
   if (product.tags?.includes("gift") || product.occasion === "Gift") {
-    return `Gift-focused item. ${profile.label} is the current default recommendation.`;
+    return `Gift-focused item. ${profile.name} is the current default recommendation.`;
   }
   if (product.workflowStatus === "ready_to_publish") {
-    return `Packaging and catalog prep are aligned. ${profile.label} fits the current state.`;
+    return `Packaging and catalog prep are aligned. ${profile.name} fits the current state.`;
   }
-  return `Packaging cost is in place. ${profile.label} remains the active default profile.`;
+  return `Packaging cost is in place. ${profile.name} remains the active default profile.`;
 }
 
 export default function AdminPackagingPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { hasPermission } = useAuth();
   const { formatMoney } = useCurrency();
   const [products, setProducts] = useState([]);
-  const [profileCatalog, setProfileCatalog] = useState(() => loadPackagingProfiles());
+  const [profileCatalog, setProfileCatalog] = useState([]);
   const [drafts, setDrafts] = useState({});
   const [filters, setFilters] = useState(defaultFilters);
   const [loading, setLoading] = useState(false);
   const [editingProfileId, setEditingProfileId] = useState(null);
   const [profileDraftValue, setProfileDraftValue] = useState("");
   const profileInputRef = useRef(null);
-  const isSuperAdmin = user?.role === "super_admin";
+  const canManageProfiles = hasPermission("packaging.profiles.manage");
 
   const loadProducts = async () => {
     setLoading(true);
     try {
-      const data = await getProducts({ admin: true, includeArchived: true });
-      setProducts(data);
+      const [productData, profileData] = await Promise.all([
+        getProducts({ admin: true, includeArchived: true }),
+        getPackagingProfiles()
+      ]);
+      setProducts(productData);
+      setProfileCatalog(profileData);
       setDrafts(
         Object.fromEntries(
-          data.map((product) => {
-            const profile = getRecommendedProfile(product, profileCatalog);
+          productData.map((product) => {
+            const profile = getRecommendedProfile(product, profileData);
             return [
               product._id,
               {
                 packagingCost: product.packagingCost || 0,
-                packagingProfileId: product.packagingProfileId || profile.id,
-                packagingProfileLabel: product.packagingProfileLabel || profile.label
+                packagingProfileId: product.packagingProfileId || profile?.id || "",
+                packagingProfileLabel: product.packagingProfileLabel || profile?.name || "",
+                packagingCostSource: product.packagingCostSource || "custom"
               }
             ];
           })
@@ -226,7 +195,7 @@ export default function AdminPackagingPage() {
 
   useEffect(() => {
     loadProducts();
-  }, [profileCatalog]);
+  }, []);
 
   useEffect(() => {
     if (!editingProfileId || !profileInputRef.current) {
@@ -266,7 +235,7 @@ export default function AdminPackagingPage() {
           product.displayCategory,
           product.supplierName,
           product.purchaseBatchId,
-          product.recommendedProfile.label
+          product.recommendedProfile?.name || ""
         ]
           .join(" ")
           .toLowerCase()
@@ -321,18 +290,18 @@ export default function AdminPackagingPage() {
 
   const applyProfile = (productId, profile) => {
     handleDraftChange(productId, {
-      packagingCost: profile.cost,
+      packagingCost: profile.defaultCost,
       packagingProfileId: profile.id,
-      packagingProfileLabel: profile.label
+      packagingProfileLabel: profile.name
     });
   };
 
   const beginProfileEdit = (profile) => {
-    if (!isSuperAdmin) {
+    if (!canManageProfiles) {
       return;
     }
     setEditingProfileId(profile.id);
-    setProfileDraftValue(profile.cost.toFixed(2));
+    setProfileDraftValue(profile.defaultCost.toFixed(2));
   };
 
   const commitProfileEdit = (profileId) => {
@@ -343,21 +312,17 @@ export default function AdminPackagingPage() {
       return;
     }
 
-    const nextCost = normalizePackagingCost(profileDraftValue, activeProfile.cost);
-    const nextProfiles = profileCatalog.map((profile) =>
-      profile.id === profileId ? { ...profile, cost: nextCost } : profile
-    );
-
-    setProfileCatalog(nextProfiles);
-    localStorage.setItem(
-      PACKAGING_PROFILE_STORAGE_KEY,
-      JSON.stringify(
-        Object.fromEntries(nextProfiles.map((profile) => [profile.id, profile.cost]))
-      )
-    );
-    setEditingProfileId(null);
-    setProfileDraftValue("");
-    message.success("Packaging profile cost updated.");
+    const nextCost = normalizePackagingCost(profileDraftValue, activeProfile.defaultCost);
+    updatePackagingProfile(profileId, { defaultCost: nextCost })
+      .then(async () => {
+        setEditingProfileId(null);
+        setProfileDraftValue("");
+        message.success("Packaging profile cost updated.");
+        await loadProducts();
+      })
+      .catch(() => {
+        message.error("Packaging profile update failed.");
+      });
   };
 
   const cancelProfileEdit = () => {
@@ -367,10 +332,11 @@ export default function AdminPackagingPage() {
 
   const handleSave = async (productId) => {
     const next = drafts[productId];
-    await updateProduct(productId, {
+    await updateProductPackaging(productId, {
       packagingCost: Number(next.packagingCost ?? 0),
       packagingProfileId: next.packagingProfileId || "",
-      packagingProfileLabel: next.packagingProfileLabel || ""
+      packagingProfileLabel: next.packagingProfileLabel || "",
+      packagingCostSource: next.packagingCostSource || "custom"
     });
     message.success("Packaging cost updated.");
     await loadProducts();
@@ -439,15 +405,15 @@ export default function AdminPackagingPage() {
             <div className="inventory-queue-item" key={profile.id}>
               <div className="inventory-queue-copy">
                 <div className="inventory-queue-topline">
-                  <strong>{profile.label}</strong>
-                  {isSuperAdmin && editingProfileId === profile.id ? (
+                    <strong>{profile.name}</strong>
+                  {canManageProfiles && editingProfileId === profile.id ? (
                     <div className="packaging-profile-price-editor">
-                      <span>INR</span>
+                      <span>{profile.currency || "AED"}</span>
                       <Input
                         ref={profileInputRef}
                         value={profileDraftValue}
                         inputMode="decimal"
-                        aria-label={`${profile.label} packaging cost`}
+                        aria-label={`${profile.name} packaging cost`}
                         onChange={(event) => setProfileDraftValue(event.target.value)}
                         onPressEnter={() => commitProfileEdit(profile.id)}
                         onBlur={() => commitProfileEdit(profile.id)}
@@ -462,15 +428,15 @@ export default function AdminPackagingPage() {
                     <button
                       type="button"
                       className={`packaging-profile-price-pill${
-                        isSuperAdmin ? " is-editable" : ""
+                        canManageProfiles ? " is-editable" : ""
                       }`}
                       onClick={() => beginProfileEdit(profile)}
                     >
-                      {formatMoney(profile.cost, "INR")}
+                      {formatMoney(profile.defaultCost, profile.currency || "AED")}
                     </button>
                   )}
                 </div>
-                <span>{profile.appliesTo}</span>
+                <span>{profile.description}</span>
               </div>
             </div>
           ))}
@@ -491,7 +457,7 @@ export default function AdminPackagingPage() {
                   </div>
                   <span>
                     {product.displayCategory} - SKU: {product.sku || "Not set"} - Default:{" "}
-                    {product.packagingProfileLabel || product.recommendedProfile.label}
+                    {product.packagingProfileLabel || product.recommendedProfile?.name || "Not assigned"}
                   </span>
                   <p>{product.packagingRecommendation}</p>
                 </div>
@@ -508,8 +474,17 @@ export default function AdminPackagingPage() {
                   >
                     Focus Row
                   </Button>
-                  <Button type="link" onClick={() => navigate(`/admin/products/${product._id}`)}>
-                    Open Product
+                  <Button
+                    type="link"
+                    onClick={() =>
+                      openProductWorkspace(navigate, product._id, {
+                        section: "packaging",
+                        from: "packaging",
+                        pathname: "/admin/packaging"
+                      })
+                    }
+                  >
+                    Open Packaging Details
                   </Button>
                 </div>
               </div>
@@ -569,8 +544,8 @@ export default function AdminPackagingPage() {
               width: 220,
               render: (_, record) => (
                 <div className="inventory-link-cell">
-                  <strong>{record.recommendedProfile.label}</strong>
-                  <span>{record.recommendedProfile.appliesTo}</span>
+                  <strong>{record.recommendedProfile?.name || "Not available"}</strong>
+                  <span>{record.recommendedProfile?.description || "No recommendation rules available."}</span>
                 </div>
               )
             },
@@ -607,7 +582,7 @@ export default function AdminPackagingPage() {
                   <Select
                     value={drafts[record._id]?.packagingProfileId}
                     options={profileCatalog.map((profile) => ({
-                      label: `${profile.label} - ${formatMoney(profile.cost, "INR")}`,
+                      label: `${profile.name} - ${formatMoney(profile.defaultCost, profile.currency || "AED")}`,
                       value: profile.id
                     }))}
                     onChange={(value) => {
@@ -626,7 +601,7 @@ export default function AdminPackagingPage() {
               render: (_, record) => (
                 <div className="inventory-link-cell">
                   <strong>
-                    {record.packagingCost > 0 ? formatMoney(record.packagingCost, "INR") : "Not set"}
+                    {record.packagingCost > 0 ? formatMoney(record.packagingCost, record.currency || "AED") : "Not set"}
                   </strong>
                   <span>{record.packagingRecommendation}</span>
                 </div>
@@ -639,9 +614,15 @@ export default function AdminPackagingPage() {
                 <Button
                   type="link"
                   style={{ paddingInline: 0 }}
-                  onClick={() => navigate(`/admin/products/${record._id}`)}
+                  onClick={() =>
+                    openProductWorkspace(navigate, record._id, {
+                      section: "packaging",
+                      from: "packaging",
+                      pathname: "/admin/packaging"
+                    })
+                  }
                 >
-                  Open Product
+                  Open Packaging Details
                 </Button>
               )
             }

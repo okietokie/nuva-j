@@ -181,7 +181,7 @@ export default function ProductTable({
     {
       key: "edit",
       icon: <EditOutlined />,
-      label: "Edit Product",
+      label: "Open Product Workspace",
       disabled: !permissions.canUpdate,
       onClick: () => onEdit(product),
     },
@@ -442,7 +442,7 @@ export default function ProductTable({
           placement="bottom"
           height="auto"
           onClose={() => setActiveMobileActionProduct(null)}
-          title={activeMobileActionProduct?.displayName || "Product actions"}
+      title={activeMobileActionProduct?.displayName || "Product actions"}
           className="catalog-mobile-drawer catalog-mobile-action-drawer"
           closeIcon={<CloseOutlined />}
         >

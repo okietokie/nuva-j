@@ -12,6 +12,7 @@ import { useAuth } from "../../context/AuthContext";
 import AdminKpiSection from "../../components/admin/AdminKpiSection";
 import { useCurrency } from "../../context/CurrencyContext";
 import { getProducts, updateProduct, updateStock } from "../../services/productService";
+import { openProductWorkspace } from "../../utils/productWorkspaceNavigation";
 import "../../styles/adminCatalog.css";
 
 const defaultFilters = {
@@ -402,8 +403,17 @@ export default function AdminInventoryPage() {
                   >
                     Focus Row
                   </Button>
-                  <Button type="link" onClick={() => navigate(`/admin/products/${product._id}`)}>
-                    Open Product
+                  <Button
+                    type="link"
+                    onClick={() =>
+                      openProductWorkspace(navigate, product._id, {
+                        section: "inventory",
+                        from: "inventory",
+                        pathname: "/admin/inventory"
+                      })
+                    }
+                  >
+                    Open Inventory Settings
                   </Button>
                 </div>
               </div>
@@ -547,9 +557,15 @@ export default function AdminInventoryPage() {
                 <Button
                   type="link"
                   style={{ paddingInline: 0 }}
-                  onClick={() => navigate(`/admin/products/${record._id}`)}
+                  onClick={() =>
+                    openProductWorkspace(navigate, record._id, {
+                      section: "inventory",
+                      from: "inventory",
+                      pathname: "/admin/inventory"
+                    })
+                  }
                 >
-                  Open Product
+                  Open Inventory Settings
                 </Button>
               )
             }

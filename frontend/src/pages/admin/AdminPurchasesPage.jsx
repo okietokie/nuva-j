@@ -23,6 +23,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useCurrency } from "../../context/CurrencyContext";
 import { getProducts } from "../../services/productService";
+import { openProductWorkspace } from "../../utils/productWorkspaceNavigation";
 import {
   createPurchaseBatch,
   createSupplier,
@@ -168,7 +169,11 @@ export default function AdminPurchasesPage() {
     if (!productId) {
       return;
     }
-    navigate(`/admin/products/${productId}`);
+    openProductWorkspace(navigate, productId, {
+      section: "purchase",
+      from: "purchases",
+      pathname: "/admin/purchases"
+    });
   };
 
   const renderBatchExpandedRow = (batch) => (
@@ -240,7 +245,7 @@ export default function AdminPurchasesPage() {
             render: (_, item) =>
               item.productId ? (
                 <Button type="link" style={{ paddingInline: 0 }} onClick={() => handleOpenLinkedProduct(item.productId)}>
-                  Open Product
+                  Open Product Costing
                 </Button>
               ) : (
                 <Typography.Text type="secondary">Not linked</Typography.Text>

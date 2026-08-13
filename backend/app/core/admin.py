@@ -176,6 +176,7 @@ WORKSPACE_PERMISSION_CATALOG = [
             {"key": "packaging.read", "label": "View"},
             {"key": "packaging.update", "label": "Edit"},
             {"key": "packaging.assign", "label": "Assign"},
+            {"key": "packaging.profiles.manage", "label": "Manage Profiles"},
         ],
         "sensitive": [
             {"key": "prices.view_cost", "label": "View Purchase Cost"},
@@ -334,6 +335,7 @@ PARENT_PERMISSION_DEPENDENCIES = {
     "customers.export": ["customers.read"],
     "packaging.update": ["packaging.read"],
     "packaging.assign": ["packaging.read"],
+    "packaging.profiles.manage": ["packaging.read"],
     "expenses.create": ["expenses.read"],
     "expenses.edit": ["expenses.read"],
     "expenses.delete": ["expenses.read"],
@@ -457,6 +459,7 @@ DEFAULT_ROLE_TEMPLATES = [
             "customers.update",
             "packaging.read",
             "packaging.update",
+            "packaging.profiles.manage",
             "expenses.read",
             "expenses.create",
             "expenses.edit",

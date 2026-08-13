@@ -417,9 +417,14 @@ export default function ProductFormDrawer({
   const faqTriggerRefs = useRef({});
   const faqHighlightTimeoutRef = useRef(null);
   const formScrollRef = useRef(null);
+  const shellRef = useRef(null);
   const pendingFocusFieldRef = useRef(null);
   const isEdit = Boolean(productId);
   const canSave = isEdit ? canUpdate : canCreate;
+  const prefersReducedMotion =
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  const scrollBehavior = prefersReducedMotion ? "auto" : "smooth";
 
   const stepFieldMap = [
     ["name", "categoryId", "sku", "description"],
@@ -551,6 +556,69 @@ export default function ProductFormDrawer({
     });
   };
 
+  const resolveFieldNode = (fieldName) => {
+    const container = formScrollRef.current;
+    if (!container) {
+      return null;
+    }
+
+    const leafField = Array.isArray(fieldName) ? fieldName[fieldName.length - 1] : fieldName;
+    const instance = form.getFieldInstance?.(leafField);
+    const directNode =
+      instance?.input ||
+      instance?.nativeElement ||
+      instance?.resizableTextArea?.textArea ||
+      instance?.selectorRef?.current ||
+      (instance instanceof HTMLElement ? instance : null);
+
+    if (directNode instanceof HTMLElement) {
+      return directNode.closest(".ant-form-item") || directNode;
+    }
+
+    const node =
+      container.querySelector(`[name="${String(leafField)}"]`) ||
+      container.querySelector(`#${String(leafField)}`);
+
+    return node?.closest(".ant-form-item") || node || null;
+  };
+
+  const scrollNodeIntoEditorView = (node) => {
+    const container = formScrollRef.current;
+    if (!container || !(node instanceof HTMLElement)) {
+      return;
+    }
+
+    const containerRect = container.getBoundingClientRect();
+    const targetRect = node.getBoundingClientRect();
+    const offsetTop = targetRect.top - containerRect.top + container.scrollTop;
+    const safeTop = 96;
+    const safeBottom = 124;
+    const targetBottom = offsetTop + targetRect.height;
+    const visibleTop = container.scrollTop + safeTop;
+    const visibleBottom = container.scrollTop + container.clientHeight - safeBottom;
+
+    if (offsetTop < visibleTop || targetBottom > visibleBottom) {
+      container.scrollTo({
+        top: Math.max(0, offsetTop - safeTop),
+        behavior: scrollBehavior
+      });
+    }
+  };
+
+  const focusFieldInsideEditor = (fieldName) => {
+    const node = resolveFieldNode(fieldName);
+    scrollNodeIntoEditorView(node);
+
+    const focusTarget =
+      node?.querySelector?.(
+        "input, textarea, [tabindex], .ant-select-selector, .ant-input-number-input"
+      ) || node;
+
+    if (focusTarget instanceof HTMLElement) {
+      focusTarget.focus({ preventScroll: true });
+    }
+  };
+
   useEffect(() => {
     const handleResize = () => {
       setIsMobileFaq(window.innerWidth < 992);
@@ -609,7 +677,9 @@ export default function ProductFormDrawer({
     }
 
     window.requestAnimationFrame(() => {
-      formScrollRef.current?.scrollTo?.({ top: 0, behavior: "smooth" });
+      if (!pendingFocusFieldRef.current) {
+        formScrollRef.current?.scrollTo?.({ top: 0, behavior: "auto" });
+      }
     });
   }, [currentStep, open]);
 
@@ -661,42 +731,41 @@ export default function ProductFormDrawer({
   }, [clampedInitialStep, form, open, productId]);
 
   useEffect(() => {
-    if (!open) return undefined;
-
-    const { body, documentElement } = document;
-    const previousBodyOverflow = body.style.overflow;
-    const previousDocumentOverflow = documentElement.style.overflow;
-
-    body.style.overflow = "hidden";
-    documentElement.style.overflow = "hidden";
-
-    return () => {
-      body.style.overflow = previousBodyOverflow;
-      documentElement.style.overflow = previousDocumentOverflow;
-    };
-  }, [open]);
-
-  useEffect(() => {
     if (!open) return;
-
-    formScrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
 
     if (!pendingFocusFieldRef.current) return;
 
     const fieldName = pendingFocusFieldRef.current;
     pendingFocusFieldRef.current = null;
 
-    window.setTimeout(() => {
-      form.scrollToField(fieldName, { block: "center", behavior: "smooth" });
-      const leafField = Array.isArray(fieldName) ? fieldName[0] : fieldName;
-      const instance = form.getFieldInstance?.(leafField);
-      if (instance?.focus) {
-        instance.focus();
-      } else if (instance?.input?.focus) {
-        instance.input.focus();
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        focusFieldInsideEditor(fieldName);
+      });
+    });
+  }, [currentStep, open]);
+
+  useEffect(() => {
+    if (!open || !isMobileLayout) {
+      return undefined;
+    }
+
+    const handleFocusIn = (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || !shellRef.current?.contains(target)) {
+        return;
       }
-    }, 60);
-  }, [currentStep, form, open]);
+
+      window.requestAnimationFrame(() => {
+        scrollNodeIntoEditorView(target.closest(".ant-form-item") || target);
+      });
+    };
+
+    document.addEventListener("focusin", handleFocusIn);
+    return () => {
+      document.removeEventListener("focusin", handleFocusIn);
+    };
+  }, [isMobileLayout, open]);
 
   useEffect(() => {
     if (!open) {
@@ -1060,15 +1129,9 @@ export default function ProductFormDrawer({
         pendingFocusFieldRef.current = fieldName;
         setCurrentStep(stepIndex);
       } else {
-        form.scrollToField(fieldName, { block: "center", behavior: "smooth" });
-        window.setTimeout(() => {
-          const instance = form.getFieldInstance?.(fieldName[0]);
-          if (instance?.focus) {
-            instance.focus();
-          } else if (instance?.input?.focus) {
-            instance.input.focus();
-          }
-        }, 60);
+        window.requestAnimationFrame(() => {
+          focusFieldInsideEditor(fieldName);
+        });
       }
     }
 
@@ -1679,7 +1742,10 @@ export default function ProductFormDrawer({
   };
 
   const formShell = (
-    <div className={`catalog-modal-shell${isMobileLayout ? " is-mobile" : ""}`}>
+    <div
+      ref={shellRef}
+      className={`catalog-modal-shell${isMobileLayout ? " is-mobile" : ""}`}
+    >
       <header className="catalog-modal-header">
         <div className="catalog-modal-header-copy">
           <div className="catalog-mobile-form-topline">
@@ -1858,6 +1924,7 @@ export default function ProductFormDrawer({
         onOk={handleCreateCategory}
         okText="Create Category"
         confirmLoading={categorySaving}
+        className="catalog-editor-modal"
       >
         <Form form={categoryForm} layout="vertical">
           <Form.Item label="Category Name" name="name" rules={[{ required: true }]}>
@@ -1892,6 +1959,7 @@ export default function ProductFormDrawer({
         onOk={handleCreateSupplier}
         okText="Create Supplier"
         confirmLoading={supplierSaving}
+        className="catalog-editor-modal"
       >
         <Form form={supplierForm} layout="vertical">
           <Form.Item label="Supplier Name" name="name" rules={[{ required: true, message: "Please enter a supplier name." }]}>
@@ -1916,6 +1984,7 @@ export default function ProductFormDrawer({
         onOk={handleCreateVariantOption}
         okText="Create Option"
         confirmLoading={variantSaving}
+        className="catalog-editor-modal"
       >
         <Form form={variantForm} layout="vertical">
           <Form.Item name="type" hidden>

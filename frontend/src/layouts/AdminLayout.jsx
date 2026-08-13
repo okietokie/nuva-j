@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Avatar, Button, Drawer, Dropdown, Grid, Layout, Typography, message } from "antd";
 import {
   DownOutlined,
@@ -17,6 +17,7 @@ import {
 } from "../admin/adminNavigation";
 import CurrencySwitcher from "../components/CurrencySwitcher";
 import { useAuth } from "../context/AuthContext";
+import useMobileViewportHeight from "../hooks/useMobileViewportHeight";
 
 const { Content } = Layout;
 
@@ -30,6 +31,7 @@ export default function AdminLayout() {
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const currentSection = findAdminSectionByPath(location.pathname);
   const currentItem = findAdminItemByPath(location.pathname);
+  useMobileViewportHeight(isMobile);
   const visibleItems = useMemo(
     () =>
       currentSection.items.filter((item) => {
@@ -99,6 +101,14 @@ export default function AdminLayout() {
     setMobileMoreOpen(false);
     navigate(key);
   };
+
+  useEffect(() => {
+    if (!isMobile) {
+      return;
+    }
+
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [currentItem.slug, isMobile]);
 
   const handleUserMenuClick = ({ key }) => {
     if (key === "settings") {
