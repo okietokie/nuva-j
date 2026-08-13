@@ -1,13 +1,29 @@
-import { Button, Input, Select, Space } from "antd";
-import { FilterOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
+import { useMemo, useState } from "react";
+import { Button, Drawer, Grid, Input, Radio, Select, Space } from "antd";
+import {
+  CheckOutlined,
+  CloseOutlined,
+  FilterOutlined,
+  ReloadOutlined,
+  SearchOutlined,
+  SwapOutlined
+} from "@ant-design/icons";
 
 export default function ProductFilters({
   filters,
+  appliedFilters = filters,
   categories,
   onChange,
   onReset,
-  onApply
+  onApply,
+  sortValue = "default",
+  sortOptions = [{ label: "Newest", value: "default" }],
+  onSortChange
 }) {
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [mobileSortOpen, setMobileSortOpen] = useState(false);
   const categoryOptions = [
     { label: "All Categories", value: "all" },
     ...categories.map((category) => ({
@@ -16,17 +32,19 @@ export default function ProductFilters({
     }))
   ];
 
-  return (
-    <div className="catalog-filters-shell">
-      <Input
-        value={filters.search}
-        placeholder="Search by product name, SKU, category, or tag..."
-        className="catalog-search-input"
-        prefix={<SearchOutlined />}
-        onChange={(event) => onChange("search", event.target.value)}
-        allowClear
-      />
+  const activeFilterCount = useMemo(
+    () =>
+      ["category", "status", "visibility", "stock"].filter(
+        (key) => appliedFilters?.[key] && appliedFilters[key] !== "all"
+      ).length,
+    [appliedFilters]
+  );
 
+  const sortLabel =
+    sortOptions.find((option) => option.value === sortValue)?.label || sortOptions[0]?.label || "Newest";
+
+  const filterFields = (
+    <>
       <Select
         value={filters.category}
         className="catalog-filter-select"
@@ -71,6 +89,117 @@ export default function ProductFilters({
         ]}
         onChange={(value) => onChange("stock", value)}
       />
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <>
+        <div className="catalog-mobile-filters">
+          <Input
+            value={filters.search}
+            placeholder="Search products or SKU"
+            className="catalog-search-input catalog-search-input-mobile"
+            prefix={<SearchOutlined aria-hidden="true" />}
+            onChange={(event) => onChange("search", event.target.value)}
+            allowClear
+          />
+
+          <div className="catalog-mobile-filter-row">
+            <Button
+              className="catalog-mobile-filter-trigger"
+              icon={<FilterOutlined aria-hidden="true" />}
+              onClick={() => setMobileFilterOpen(true)}
+            >
+              Filters
+              {activeFilterCount ? (
+                <span className="catalog-mobile-filter-count">{activeFilterCount}</span>
+              ) : null}
+            </Button>
+            <Button
+              className="catalog-mobile-sort-trigger"
+              icon={<SwapOutlined aria-hidden="true" />}
+              onClick={() => setMobileSortOpen(true)}
+            >
+              Sort: {sortLabel}
+            </Button>
+          </div>
+        </div>
+
+        <Drawer
+          open={mobileFilterOpen}
+          placement="bottom"
+          height="auto"
+          onClose={() => setMobileFilterOpen(false)}
+          className="catalog-mobile-drawer catalog-mobile-filter-drawer"
+          title="Filter products"
+          closeIcon={<CloseOutlined />}
+        >
+          <div className="catalog-mobile-sheet">
+            <div className="catalog-mobile-sheet__meta">
+              <span>{activeFilterCount ? `${activeFilterCount} active` : "No active filters"}</span>
+              <Button type="text" onClick={onReset}>
+                Reset All
+              </Button>
+            </div>
+            <div className="catalog-mobile-sheet__body">
+              {filterFields}
+            </div>
+            <div className="catalog-mobile-sheet__footer">
+              <Button
+                type="primary"
+                className="catalog-mobile-sheet__submit"
+                icon={<CheckOutlined aria-hidden="true" />}
+                onClick={() => {
+                  onApply();
+                  setMobileFilterOpen(false);
+                }}
+              >
+                Show Products
+              </Button>
+            </div>
+          </div>
+        </Drawer>
+
+        <Drawer
+          open={mobileSortOpen}
+          placement="bottom"
+          height="auto"
+          onClose={() => setMobileSortOpen(false)}
+          className="catalog-mobile-drawer catalog-mobile-sort-drawer"
+          title="Sort products"
+          closeIcon={<CloseOutlined />}
+        >
+          <Radio.Group
+            value={sortValue}
+            className="catalog-mobile-sort-group"
+            onChange={(event) => {
+              onSortChange?.(event.target.value);
+              setMobileSortOpen(false);
+            }}
+          >
+            {sortOptions.map((option) => (
+              <Radio.Button key={option.value} value={option.value}>
+                {option.label}
+              </Radio.Button>
+            ))}
+          </Radio.Group>
+        </Drawer>
+      </>
+    );
+  }
+
+  return (
+    <div className="catalog-filters-shell">
+      <Input
+        value={filters.search}
+        placeholder="Search by product name, SKU, category, or tag..."
+        className="catalog-search-input"
+        prefix={<SearchOutlined aria-hidden="true" />}
+        onChange={(event) => onChange("search", event.target.value)}
+        allowClear
+      />
+      {filterFields}
 
       <Space.Compact>
         <Button icon={<ReloadOutlined />} onClick={onReset}>

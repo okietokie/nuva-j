@@ -209,6 +209,24 @@ export const adminSections = [
   }
 ];
 
+export const adminPrimaryMobileSlugs = [
+  "dashboard",
+  "products",
+  "orders",
+  "inventory",
+  "purchases",
+  "finance",
+  "reports",
+  "website",
+  "staff",
+  "packaging",
+  "expenses",
+  "media",
+  "customers",
+  "settings",
+  "profile"
+];
+
 export function getAdminItemPath(section, item) {
   return item.slug === "dashboard" ? section.basePath : `${section.basePath}/${item.slug}`;
 }
@@ -219,8 +237,13 @@ export function findAdminSectionByPath() {
 
 export function findAdminItemByPath(pathname) {
   const section = adminSections[0];
+  const normalizedPath = pathname.endsWith("/") && pathname !== "/" ? pathname.slice(0, -1) : pathname;
+
   return (
-    section.items.find((item) => pathname === getAdminItemPath(section, item)) || section.items[0]
+    section.items.find((item) => {
+      const itemPath = getAdminItemPath(section, item);
+      return normalizedPath === itemPath || normalizedPath.startsWith(`${itemPath}/`);
+    }) || section.items[0]
   );
 }
 

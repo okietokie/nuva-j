@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Checkbox, Dropdown, Grid, Space, Table } from "antd";
+import { Button, Checkbox, Drawer, Dropdown, Grid, Space, Table } from "antd";
 import {
+  CheckOutlined,
+  CloseOutlined,
   CopyOutlined,
   DeleteOutlined,
   EditOutlined,
@@ -67,6 +69,10 @@ export default function ProductTable({
   products,
   loading,
   permissions,
+  selectionMode = false,
+  selectedProductIds = [],
+  onSelectedProductIdsChange,
+  onSelectionModeChange,
   onEdit,
   onView,
   onDuplicate,
@@ -79,11 +85,17 @@ export default function ProductTable({
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
   const isTablet = screens.md && !screens.lg;
-  const [selectedProductIds, setSelectedProductIds] = useState([]);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [singleDeleteTarget, setSingleDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 7 });
+  const [activeMobileActionProduct, setActiveMobileActionProduct] = useState(null);
+
+  const setSelectedProductIds = (value) => {
+    const nextValue =
+      typeof value === "function" ? value(selectedProductIds || []) : value;
+    onSelectedProductIdsChange?.(nextValue);
+  };
 
   useEffect(() => {
     setSelectedProductIds((current) =>
@@ -333,99 +345,143 @@ export default function ProductTable({
   if (isMobile) {
     return (
       <>
-        {permissions.canDelete ? (
-          <AdminBulkActionBar
-            selectedCount={selectedProductIds.length}
-            pageCount={currentPageIds.length}
-            totalCount={products.length}
-            noun="products"
-            onSelectAllResults={products.length > selectedProductIds.length ? selectAllResults : null}
-            onDeleteSelected={() => setBulkDeleteOpen(true)}
-            onClearSelection={clearSelection}
-            deleting={deleting}
-          />
+        {permissions.canDelete && selectionMode ? (
+          <div className="catalog-mobile-selection-toolbar" role="status" aria-live="polite">
+            <div className="catalog-mobile-selection-toolbar__summary">
+              {selectedProductIds.length} selected
+            </div>
+            <div className="catalog-mobile-selection-toolbar__actions">
+              <Button type="text" onClick={selectAllResults}>
+                Select All
+              </Button>
+              <Button type="text" onClick={() => {
+                clearSelection();
+                onSelectionModeChange?.(false);
+              }}>
+                Clear
+              </Button>
+            </div>
+          </div>
         ) : null}
-        <div className="catalog-product-card-grid" aria-busy={loading}>
+        <div className="catalog-mobile-product-list" aria-busy={loading}>
           {products.map((product) => {
             const isSelected = selectedProductIds.includes(product._id);
             return (
-              <article
-                className={`catalog-product-card${isSelected ? " is-selected" : ""}`}
-                key={product._id}
-              >
-                <label className="catalog-card-checkbox">
-                  <Checkbox
-                    disabled={!permissions.canDelete}
-                    checked={isSelected}
-                    onChange={(event) => toggleCardSelection(product._id, event.target.checked)}
-                  >
-                    Select product
-                  </Checkbox>
-                </label>
-                <img
-                  src={product.primaryImage}
-                  alt={product.displayName}
-                  className="catalog-product-art"
-                />
-                <div className="catalog-product-body">
-                  <div className="catalog-product-card-head">
-                    <span className="catalog-mini-category">{product.displayCategory}</span>
-                    <ProductStatusBadge type="status" value={product.workflowStatus} />
-                  </div>
-                  <h4>{product.displayName}</h4>
-                  <div className="catalog-mobile-meta-list">
-                    {getProductMobileMeta(product, formatMoney).map((item) => (
-                      <span key={item} className="catalog-cell-subtitle">
-                        {item}
+              <article className={`catalog-mobile-product-row${isSelected ? " is-selected" : ""}`} key={product._id}>
+                {selectionMode ? (
+                  <label className="catalog-mobile-row-checkbox">
+                    <Checkbox
+                      disabled={!permissions.canDelete}
+                      checked={isSelected}
+                      onChange={(event) => toggleCardSelection(product._id, event.target.checked)}
+                      aria-label={`Select ${product.displayName}`}
+                    />
+                  </label>
+                ) : null}
+                <button
+                  type="button"
+                  className="catalog-mobile-product-main"
+                  onClick={() => onEdit(product)}
+                  disabled={!permissions.canUpdate}
+                >
+                  <img
+                    src={product.primaryImage}
+                    alt={product.displayName}
+                    className="catalog-mobile-product-thumb"
+                  />
+                  <div className="catalog-mobile-product-copy">
+                    <div className="catalog-mobile-product-head">
+                      <h4>{product.displayName}</h4>
+                      <strong>{formatMoney(product.price, product.currency || "AED")}</strong>
+                    </div>
+                    <div className="catalog-mobile-product-meta">
+                      <span>SKU {product.sku || "Not set"}</span>
+                      <span>{product.displayCategory || "No category"}</span>
+                    </div>
+                    <div className="catalog-mobile-product-status">
+                      <ProductStatusBadge type="status" value={product.workflowStatus} />
+                      <span
+                        className={`catalog-mobile-stock-copy stock-copy-${product.stockStatus
+                          .toLowerCase()
+                          .replace(/\s+/g, "-")}`}
+                      >
+                        {product.stockStatus} {product.stockStatus !== "Not set" ? `• ${product.displayStockLabel}` : ""}
                       </span>
-                    ))}
+                    </div>
                   </div>
-                  <div className="catalog-price-stack">
-                    <strong>{formatMoney(product.price, product.currency || "AED")}</strong>
-                    {product.hasSale ? <span>{formatMoney(product.price, product.currency || "AED")}</span> : null}
-                  </div>
-                  <div className="catalog-cost-stack">
-                    <strong>{formatMoney(product.totalProductCost, product.currency || "AED")}</strong>
-                    <span>{formatMoney(product.suggestedSellingPrice, product.currency || "AED")}</span>
-                  </div>
-                  <div className="catalog-stock-copy">
-                    <span>{product.displayStockLabel}</span>
-                    <span className={`stock-copy-${product.stockStatus.toLowerCase().replace(/\s+/g, "-")}`}>
-                      {product.stockStatus}
-                    </span>
-                  </div>
-                  <div className="catalog-badge-row">
-                    <ProductStatusBadge type="visibility" value={product.visibility} />
-                    {renderLabels(product)}
-                  </div>
-                </div>
-                <div className="catalog-card-actions">
+                </button>
+                <div className="catalog-mobile-product-actions">
                   <Button
-                    type="default"
-                    icon={<EditOutlined />}
-                    disabled={!permissions.canUpdate}
-                    onClick={() => onEdit(product)}
-                  >
-                    Edit
-                  </Button>
-                  <Button type="default" icon={<EyeOutlined />} onClick={() => onView(product)}>
-                    Preview
-                  </Button>
-                  <Dropdown
-                    trigger={["click"]}
-                    menu={{
-                      items: actionMenuItems(product),
-                    }}
-                  >
-                    <Button type="default" icon={<EllipsisOutlined />}>
-                      More
-                    </Button>
-                  </Dropdown>
+                    type="text"
+                    className="catalog-mobile-overflow"
+                    icon={<EllipsisOutlined />}
+                    aria-label={`More actions for ${product.displayName}`}
+                    onClick={() => setActiveMobileActionProduct(product)}
+                  />
                 </div>
               </article>
             );
           })}
         </div>
+        {permissions.canDelete && selectionMode && selectedProductIds.length ? (
+          <div className="catalog-mobile-bulk-footer">
+            <Button
+              danger
+              type="primary"
+              icon={<DeleteOutlined />}
+              onClick={() => setBulkDeleteOpen(true)}
+              loading={deleting}
+            >
+              Delete Selected
+            </Button>
+          </div>
+        ) : null}
+
+        <Drawer
+          open={Boolean(activeMobileActionProduct)}
+          placement="bottom"
+          height="auto"
+          onClose={() => setActiveMobileActionProduct(null)}
+          title={activeMobileActionProduct?.displayName || "Product actions"}
+          className="catalog-mobile-drawer catalog-mobile-action-drawer"
+          closeIcon={<CloseOutlined />}
+        >
+          {activeMobileActionProduct ? (
+            <div className="catalog-mobile-action-list">
+              {actionMenuItems(activeMobileActionProduct)
+                .filter((item) => item.type !== "divider")
+                .map((item) => (
+                  <Button
+                    key={item.key}
+                    type="text"
+                    danger={item.danger}
+                    disabled={item.disabled}
+                    className={`catalog-mobile-action-item${item.danger ? " is-danger" : ""}`}
+                    icon={item.icon}
+                    onClick={() => {
+                      item.onClick?.();
+                      setActiveMobileActionProduct(null);
+                    }}
+                  >
+                    {item.label}
+                  </Button>
+                ))}
+              {permissions.canDelete ? (
+                <Button
+                  type="text"
+                  className="catalog-mobile-action-item"
+                  icon={<CheckOutlined />}
+                  onClick={() => {
+                    onSelectionModeChange?.(true);
+                    setActiveMobileActionProduct(null);
+                  }}
+                >
+                  Select Products
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+        </Drawer>
 
         <AdminDeleteConfirmDialog
           open={bulkDeleteOpen}
@@ -433,8 +489,8 @@ export default function ProductTable({
           message={deleteDialog.message}
           confirmLabel={deleteDialog.confirmLabel}
           loading={deleting}
-          onConfirm={handleBulkDelete}
-          onCancel={() => !deleting && setBulkDeleteOpen(false)}
+            onConfirm={handleBulkDelete}
+            onCancel={() => !deleting && setBulkDeleteOpen(false)}
         />
         <AdminDeleteConfirmDialog
           open={Boolean(singleDeleteTarget)}
@@ -442,8 +498,8 @@ export default function ProductTable({
           message={deleteDialog.message}
           confirmLabel={deleteDialog.confirmLabel}
           loading={deleting}
-          onConfirm={handleSingleDelete}
-          onCancel={() => !deleting && setSingleDeleteTarget(null)}
+            onConfirm={handleSingleDelete}
+            onCancel={() => !deleting && setSingleDeleteTarget(null)}
         />
       </>
     );

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Button,
+  Drawer,
   Form,
   Grid,
   Input,
@@ -165,198 +166,205 @@ export default function CategoryModal({
     }
   };
 
-  return (
-    <Modal
-      open={open}
-      onCancel={onClose}
-      footer={null}
-      width={isMobile ? "100%" : 1080}
-      forceRender
-      centered={!isMobile}
-      title={
-        <div className={`category-modal-titlebar${isMobile ? " is-mobile" : ""}`}>
+  const categoryBody = (
+    <div className={`category-modal-shell${isMobile ? " is-mobile" : ""}`}>
+      <div className={`category-modal-list${isMobile ? " category-modal-panel" : ""}`}>
+        <div className="category-modal-section-head">
           <div>
-            {isMobile ? (
-              <>
-                <span className="category-modal-kicker">Category Setup</span>
-                <Typography.Title level={2}>Add Category</Typography.Title>
-                <Typography.Paragraph>
-                  Create a clean category your client can use comfortably while building product listings.
-                </Typography.Paragraph>
-              </>
-            ) : (
-              <>
+            <strong>Existing Categories</strong>
+            <span>{filteredCategories.length} visible in this view</span>
+          </div>
+        </div>
+        <Input.Search
+          value={query}
+          placeholder="Search categories..."
+          onChange={(event) => setQuery(event.target.value)}
+          allowClear
+        />
+        <Table
+          rowKey="_id"
+          dataSource={filteredCategories}
+          pagination={false}
+          className="category-table"
+          columns={[
+            {
+              title: "Category",
+              dataIndex: "name",
+              render: (_, category) => (
+                <div>
+                  <div className="catalog-cell-title">{category.name}</div>
+                  <div className="catalog-cell-subtitle">
+                    {category.code ? `${category.code} - ` : ""}{category.description || "No description"}
+                  </div>
+                </div>
+              )
+            },
+            {
+              title: "Products",
+              render: (_, category) => usageCounts.get(category._id) || 0
+            },
+            {
+              title: "Status",
+              render: (_, category) => (
+                <Tag color={category.isActive ? "green" : "red"}>
+                  {category.isActive ? "Active" : "Inactive"}
+                </Tag>
+              )
+            },
+            {
+              title: "Actions",
+              width: isMobile ? 110 : undefined,
+              render: (_, category) => (
+                <Space size={isMobile ? 4 : 8}>
+                  <Button
+                    type="text"
+                    icon={<EditOutlined />}
+                    disabled={!canManage}
+                    onClick={() => handleEdit(category)}
+                  />
+                  <Button
+                    type="text"
+                    danger
+                    disabled={!canManage}
+                    onClick={() => handleDelete(category)}
+                  >
+                    Delete
+                  </Button>
+                </Space>
+              )
+            }
+          ]}
+        />
+      </div>
+
+      <div className={`category-modal-form${isMobile ? " category-modal-panel" : ""}`}>
+        {isMobile ? (
+          <div className="category-mobile-progress-card">
+            <div className="category-mobile-progress-badge">
+              {editingCategory ? "Edit" : "New"}
+            </div>
+            <div className="category-mobile-progress-copy">
+              <span>{editingCategory ? "Updating category" : "Step 1 of 1"}</span>
+              <strong>{editingCategory ? "Category Details" : "Basic Details"}</strong>
+            </div>
+          </div>
+        ) : null}
+        <div className="category-form-head">
+          <div>
+            <h4>{editingCategory ? "Edit Category" : "Add Category"}</h4>
+            <p>
+              Set the name, code, and display order. Keep codes short so SKU generation stays clean.
+            </p>
+          </div>
+          <Button
+            type="primary"
+            className="category-form-reset-button"
+            icon={<PlusOutlined />}
+            disabled={!canManage}
+            onClick={() => {
+              setEditingCategory(null);
+              form.resetFields();
+              form.setFieldsValue({
+                sortOrder: categories.length + 1,
+                isActive: true
+              });
+            }}
+          >
+            Add Category
+          </Button>
+        </div>
+
+        <Form form={form} layout="vertical" className="category-modal-form-grid">
+          <div className="category-form-card">
+            <Form.Item label="Category Name" name="name" rules={[{ required: true }]}>
+              <Input disabled={!canManage} placeholder="Example: Earrings" />
+            </Form.Item>
+            <div className="category-form-inline">
+              <Form.Item
+                label="Category Code"
+                name="code"
+                rules={[
+                  { required: true, message: "Please enter a category code." },
+                  { pattern: /^[A-Za-z]{2,3}$/, message: "Use 2 or 3 letters only." }
+                ]}
+              >
+                <Input maxLength={3} disabled={!canManage} placeholder="ER" />
+              </Form.Item>
+              <Form.Item label="Sort Order" name="sortOrder">
+                <InputNumber min={0} style={{ width: "100%" }} disabled={!canManage} />
+              </Form.Item>
+            </div>
+            <Form.Item label="Slug" name="slug">
+              <Input disabled={!canManage} placeholder="Optional custom slug" />
+            </Form.Item>
+          </div>
+
+          <div className="category-form-card">
+            <Form.Item label="Description" name="description">
+              <Input.TextArea rows={isMobile ? 5 : 4} disabled={!canManage} placeholder="Short category description" />
+            </Form.Item>
+            <Form.Item label="Category Image" name="imageUrl">
+              <Input disabled={!canManage} placeholder="https://..." />
+            </Form.Item>
+            <Form.Item label="Status" name="isActive">
+              <Select
+                disabled={!canManage}
+                value={watchedIsActive === false ? "inactive" : "active"}
+                onChange={(value) => form.setFieldValue("isActive", value === "active")}
+                options={[
+                  { value: "active", label: "Active" },
+                  { value: "inactive", label: "Inactive" }
+                ]}
+              />
+            </Form.Item>
+          </div>
+          <Space className="category-modal-form-actions">
+            <Button onClick={onClose}>Cancel</Button>
+            <Button type="primary" loading={saving} disabled={!canManage} onClick={handleSubmit}>
+              {editingCategory ? "Update Category" : "Save Category"}
+            </Button>
+          </Space>
+        </Form>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {isMobile ? (
+        <Drawer
+          open={open}
+          onClose={onClose}
+          placement="bottom"
+          height="100%"
+          title="Manage Categories"
+          className="catalog-category-drawer-mobile"
+        >
+          {categoryBody}
+        </Drawer>
+      ) : (
+        <Modal
+          open={open}
+          onCancel={onClose}
+          footer={null}
+          width={1080}
+          forceRender
+          centered
+          title={
+            <div className="category-modal-titlebar">
+              <div>
                 <Typography.Title level={4}>Manage Categories</Typography.Title>
                 <Typography.Paragraph>
                   Organize product types, keep category codes tidy, and update the catalog structure in one place.
                 </Typography.Paragraph>
-              </>
-            )}
-          </div>
-        </div>
-      }
-      className="catalog-category-modal"
-    >
-      <div className={`category-modal-shell${isMobile ? " is-mobile" : ""}`}>
-        <div className={`category-modal-list${isMobile ? " category-modal-panel" : ""}`}>
-          <div className="category-modal-section-head">
-            <div>
-              <strong>Existing Categories</strong>
-              <span>{filteredCategories.length} visible in this view</span>
-            </div>
-          </div>
-          <Input.Search
-            value={query}
-            placeholder="Search categories..."
-            onChange={(event) => setQuery(event.target.value)}
-            allowClear
-          />
-          <Table
-            rowKey="_id"
-            dataSource={filteredCategories}
-            pagination={false}
-            className="category-table"
-            columns={[
-              {
-                title: "Category",
-                dataIndex: "name",
-                render: (_, category) => (
-                  <div>
-                    <div className="catalog-cell-title">{category.name}</div>
-                    <div className="catalog-cell-subtitle">
-                      {category.code ? `${category.code} - ` : ""}{category.description || "No description"}
-                    </div>
-                  </div>
-                )
-              },
-              {
-                title: "Products",
-                render: (_, category) => usageCounts.get(category._id) || 0
-              },
-              {
-                title: "Status",
-                render: (_, category) => (
-                  <Tag color={category.isActive ? "green" : "red"}>
-                    {category.isActive ? "Active" : "Inactive"}
-                  </Tag>
-                )
-              },
-              {
-                title: "Actions",
-                width: isMobile ? 110 : undefined,
-                render: (_, category) => (
-                  <Space size={isMobile ? 4 : 8}>
-                    <Button
-                      type="text"
-                      icon={<EditOutlined />}
-                      disabled={!canManage}
-                      onClick={() => handleEdit(category)}
-                    />
-                    <Button
-                      type="text"
-                      danger
-                      disabled={!canManage}
-                      onClick={() => handleDelete(category)}
-                    >
-                      Delete
-                    </Button>
-                  </Space>
-                )
-              }
-            ]}
-          />
-        </div>
-
-        <div className={`category-modal-form${isMobile ? " category-modal-panel" : ""}`}>
-          {isMobile ? (
-            <div className="category-mobile-progress-card">
-              <div className="category-mobile-progress-badge">
-                {editingCategory ? "Edit" : "New"}
-              </div>
-              <div className="category-mobile-progress-copy">
-                <span>{editingCategory ? "Updating category" : "Step 1 of 1"}</span>
-                <strong>{editingCategory ? "Category Details" : "Basic Details"}</strong>
               </div>
             </div>
-          ) : null}
-          <div className="category-form-head">
-            <div>
-              <h4>{editingCategory ? "Edit Category" : "Add Category"}</h4>
-              <p>
-                Set the name, code, and display order. Keep codes short so SKU generation stays clean.
-              </p>
-            </div>
-            <Button
-              type="primary"
-              className="category-form-reset-button"
-              icon={<PlusOutlined />}
-              disabled={!canManage}
-              onClick={() => {
-                setEditingCategory(null);
-                form.resetFields();
-                form.setFieldsValue({
-                  sortOrder: categories.length + 1,
-                  isActive: true
-                });
-              }}
-            >
-              Add Category
-            </Button>
-          </div>
-
-          <Form form={form} layout="vertical" className="category-modal-form-grid">
-            <div className="category-form-card">
-              <Form.Item label="Category Name" name="name" rules={[{ required: true }]}>
-                <Input disabled={!canManage} placeholder="Example: Earrings" />
-              </Form.Item>
-              <div className="category-form-inline">
-                <Form.Item
-                  label="Category Code"
-                  name="code"
-                  rules={[
-                    { required: true, message: "Please enter a category code." },
-                    { pattern: /^[A-Za-z]{2,3}$/, message: "Use 2 or 3 letters only." }
-                  ]}
-                >
-                  <Input maxLength={3} disabled={!canManage} placeholder="ER" />
-                </Form.Item>
-                <Form.Item label="Sort Order" name="sortOrder">
-                  <InputNumber min={0} style={{ width: "100%" }} disabled={!canManage} />
-                </Form.Item>
-              </div>
-              <Form.Item label="Slug" name="slug">
-                <Input disabled={!canManage} placeholder="Optional custom slug" />
-              </Form.Item>
-            </div>
-
-            <div className="category-form-card">
-              <Form.Item label="Description" name="description">
-                <Input.TextArea rows={isMobile ? 5 : 4} disabled={!canManage} placeholder="Short category description" />
-              </Form.Item>
-              <Form.Item label="Category Image" name="imageUrl">
-                <Input disabled={!canManage} placeholder="https://..." />
-              </Form.Item>
-              <Form.Item label="Status" name="isActive">
-                <Select
-                  disabled={!canManage}
-                  value={watchedIsActive === false ? "inactive" : "active"}
-                  onChange={(value) => form.setFieldValue("isActive", value === "active")}
-                  options={[
-                    { value: "active", label: "Active" },
-                    { value: "inactive", label: "Inactive" }
-                  ]}
-                />
-              </Form.Item>
-            </div>
-            <Space className="category-modal-form-actions">
-              <Button onClick={onClose}>Cancel</Button>
-              <Button type="primary" loading={saving} disabled={!canManage} onClick={handleSubmit}>
-                {editingCategory ? "Update Category" : "Save Category"}
-              </Button>
-            </Space>
-          </Form>
-        </div>
-      </div>
+          }
+          className="catalog-category-modal"
+        >
+          {categoryBody}
+        </Modal>
+      )}
 
       <Modal
         open={Boolean(deleteTarget)}
@@ -382,6 +390,6 @@ export default function CategoryModal({
             : "This category will be removed from the catalog."}
         </p>
       </Modal>
-    </Modal>
+    </>
   );
 }

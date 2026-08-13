@@ -5,7 +5,9 @@ import {
   Checkbox,
   Col,
   Collapse,
+  Drawer,
   Form,
+  Grid,
   Input,
   InputNumber,
   Modal,
@@ -25,6 +27,7 @@ import {
   EyeOutlined,
   FileTextOutlined,
   InfoCircleOutlined,
+  LeftOutlined,
   PictureOutlined,
   PlusOutlined,
   QuestionCircleOutlined,
@@ -378,6 +381,8 @@ export default function ProductFormDrawer({
   onCategoriesUpdated,
   onSaved
 }) {
+  const screens = Grid.useBreakpoint();
+  const isMobileLayout = !screens.md;
   const [form] = Form.useForm();
   const [categoryForm] = Form.useForm();
   const [supplierForm] = Form.useForm();
@@ -400,6 +405,7 @@ export default function ProductFormDrawer({
   const [skuPreviewLoading, setSkuPreviewLoading] = useState(false);
   const [imageList, setImageList] = useState([]);
   const [faqPanelOpen, setFaqPanelOpen] = useState(false);
+  const [stepMenuOpen, setStepMenuOpen] = useState(false);
   const [faqSearch, setFaqSearch] = useState("");
   const [faqActiveKey, setFaqActiveKey] = useState(["purchase-unit-cost"]);
   const [faqHighlightedKey, setFaqHighlightedKey] = useState("");
@@ -596,6 +602,16 @@ export default function ProductFormDrawer({
     watchedPurchaseTotalCost,
     watchedSuggestedSellingPrice
   ]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      formScrollRef.current?.scrollTo?.({ top: 0, behavior: "smooth" });
+    });
+  }, [currentStep, open]);
 
   useEffect(() => {
     if (!open) {
@@ -1662,108 +1678,175 @@ export default function ProductFormDrawer({
     return null;
   };
 
-  return (
-    <>
-      <Modal
-        open={open}
-        onClose={onClose}
-        forceRender
-        destroyOnHidden={false}
-        width="min(1456px, calc(100vw - 32px))"
-        centered
-        closable={false}
-        onCancel={onClose}
-        className="catalog-form-modal"
-        title={null}
-        footer={null}
-      >
-        <div className="catalog-modal-shell">
-          <header className="catalog-modal-header">
-            <div className="catalog-modal-header-copy">
-              <h3>{productId ? "Edit Product" : "Add Product"}</h3>
-              <p className="catalog-modal-subtitle">Manage product details step by step without losing context or entered data.</p>
-            </div>
+  const formShell = (
+    <div className={`catalog-modal-shell${isMobileLayout ? " is-mobile" : ""}`}>
+      <header className="catalog-modal-header">
+        <div className="catalog-modal-header-copy">
+          <div className="catalog-mobile-form-topline">
             <Button
               type="text"
-              className="catalog-modal-close"
-              icon={<CloseOutlined />}
-              aria-label="Close add or edit product dialog"
+              className="catalog-modal-close catalog-modal-back"
+              icon={isMobileLayout ? <LeftOutlined /> : <CloseOutlined />}
+              aria-label={isMobileLayout ? "Close product workflow" : "Close add or edit product dialog"}
               onClick={onClose}
             />
-          </header>
-
-          <div className="catalog-modal-layout">
-            <aside className="catalog-modal-sidebar" aria-label="Product form sections">
-              {sectionItems.map((item, index) => {
-                const Icon = item.icon;
-                const isActive = currentStep === index;
-                const isComplete = index < currentStep;
-
-                return (
-                  <button
-                    key={item.key}
-                    type="button"
-                    className={["catalog-step-card", isActive ? "is-active" : "", isComplete ? "is-complete" : ""]
-                      .filter(Boolean)
-                      .join(" ")}
-                    aria-current={isActive ? "step" : undefined}
-                    onClick={() => {
-                      setSaveError("");
-                      setCurrentStep(index);
-                    }}
-                  >
-                    <div className="catalog-step-marker">{isComplete ? <CheckOutlined /> : index + 1}</div>
-                    <div className="catalog-step-copy">
-                      <strong>{item.label}</strong>
-                      <span>{item.description}</span>
-                    </div>
-                    <div className="catalog-step-state" aria-hidden="true">
-                      {isComplete ? <CheckOutlined /> : <Icon />}
-                    </div>
-                  </button>
-                );
-              })}
-            </aside>
-
-            <div className="catalog-modal-main">
-              <div
-                ref={formScrollRef}
-                className={["catalog-modal-main-scroll", faqPanelOpen && !isMobileFaq ? "has-faq-open" : ""].filter(Boolean).join(" ")}
+            <h3>{productId ? "Edit Product" : "Add Product"}</h3>
+            {isMobileLayout ? (
+              <Button
+                type="text"
+                className="catalog-mobile-step-menu"
+                onClick={() => setStepMenuOpen(true)}
               >
-                <Form form={form} layout="vertical" className="catalog-modal-form" onFinish={(values) => handleSubmit(values)}>
-                  {saveError ? <Alert type="error" showIcon message={saveError} className="catalog-form-alert" /> : null}
-                  {productLoading ? <Spin /> : renderStepContent()}
-                </Form>
-
-                {faqPanelOpen && !isMobileFaq ? renderFaqPanel() : null}
+                Step {currentStep + 1}
+              </Button>
+            ) : (
+              <Button
+                type="text"
+                className="catalog-modal-close"
+                icon={<CloseOutlined />}
+                aria-label="Close add or edit product dialog"
+                onClick={onClose}
+              />
+            )}
+          </div>
+          {isMobileLayout ? (
+            <div className="catalog-mobile-progress-block">
+              <div className="catalog-mobile-progress-copy">
+                <span>
+                  Step {currentStep + 1} of {sectionItems.length}
+                </span>
+                <strong>{currentSection.label}</strong>
+              </div>
+              <div className="catalog-mobile-progress-track" aria-hidden="true">
+                <span
+                  className="catalog-mobile-progress-fill"
+                  style={{ width: `${((currentStep + 1) / sectionItems.length) * 100}%` }}
+                />
               </div>
             </div>
-          </div>
-
-          <footer className="catalog-modal-footer">
-            <div className="catalog-modal-footer-start">
-              <Button type="text" onClick={onClose}>
-                Cancel
-              </Button>
-            </div>
-            <div className="catalog-modal-footer-actions">
-              <Button className="catalog-modal-footer-back" onClick={goBack} disabled={currentStep === 0}>
-                Back
-              </Button>
-              <Button
-                className="catalog-modal-footer-draft"
-                disabled={!canSave}
-                onClick={() => handleSubmit(form.getFieldsValue(true), { workflowStatus: "draft" })}
-              >
-                Save as Draft
-              </Button>
-              <Button className="catalog-modal-footer-next" type="primary" loading={saving} disabled={!canSave} onClick={goNext}>
-                {currentStep === sectionItems.length - 1 ? (productId ? "Update Product" : "Save Product") : "Next"}
-              </Button>
-            </div>
-          </footer>
+          ) : (
+            <p className="catalog-modal-subtitle">
+              Manage product details step by step without losing context or entered data.
+            </p>
+          )}
         </div>
-      </Modal>
+      </header>
+
+      <div className="catalog-modal-layout">
+        {!isMobileLayout ? (
+          <aside className="catalog-modal-sidebar" aria-label="Product form sections">
+            {sectionItems.map((item, index) => {
+              const Icon = item.icon;
+              const isActive = currentStep === index;
+              const isComplete = index < currentStep;
+
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={["catalog-step-card", isActive ? "is-active" : "", isComplete ? "is-complete" : ""]
+                    .filter(Boolean)
+                    .join(" ")}
+                  aria-current={isActive ? "step" : undefined}
+                  onClick={() => {
+                    setSaveError("");
+                    setCurrentStep(index);
+                  }}
+                >
+                  <div className="catalog-step-marker">{isComplete ? <CheckOutlined /> : index + 1}</div>
+                  <div className="catalog-step-copy">
+                    <strong>{item.label}</strong>
+                    <span>{item.description}</span>
+                  </div>
+                  <div className="catalog-step-state" aria-hidden="true">
+                    {isComplete ? <CheckOutlined /> : <Icon />}
+                  </div>
+                </button>
+              );
+            })}
+          </aside>
+        ) : null}
+
+        <div className="catalog-modal-main">
+          <div
+            ref={formScrollRef}
+            className={["catalog-modal-main-scroll", faqPanelOpen && !isMobileFaq ? "has-faq-open" : ""].filter(Boolean).join(" ")}
+          >
+            <Form form={form} layout="vertical" className="catalog-modal-form" onFinish={(values) => handleSubmit(values)}>
+              {saveError ? <Alert type="error" showIcon message={saveError} className="catalog-form-alert" /> : null}
+              {productLoading ? <Spin /> : renderStepContent()}
+            </Form>
+
+            {faqPanelOpen && !isMobileFaq ? renderFaqPanel() : null}
+          </div>
+        </div>
+      </div>
+
+      <footer className={`catalog-modal-footer${isMobileLayout ? " is-mobile" : ""}`}>
+        <div className="catalog-modal-footer-start">
+          {!isMobileLayout ? (
+            <Button type="text" onClick={onClose}>
+              Cancel
+            </Button>
+          ) : (
+            <Button type="text" onClick={() => handleSubmit(form.getFieldsValue(true), { workflowStatus: "draft" })} disabled={!canSave}>
+              Save Draft
+            </Button>
+          )}
+        </div>
+        <div className="catalog-modal-footer-actions">
+          <Button className="catalog-modal-footer-back" onClick={goBack} disabled={currentStep === 0}>
+            Back
+          </Button>
+          {!isMobileLayout ? (
+            <Button
+              className="catalog-modal-footer-draft"
+              disabled={!canSave}
+              onClick={() => handleSubmit(form.getFieldsValue(true), { workflowStatus: "draft" })}
+            >
+              Save as Draft
+            </Button>
+          ) : null}
+          <Button className="catalog-modal-footer-next" type="primary" loading={saving} disabled={!canSave} onClick={goNext}>
+            {currentStep === sectionItems.length - 1 ? (productId ? "Update Product" : "Create Product") : "Next"}
+          </Button>
+        </div>
+      </footer>
+    </div>
+  );
+
+  return (
+    <>
+      {isMobileLayout ? (
+        <Drawer
+          open={open}
+          onClose={onClose}
+          destroyOnHidden={false}
+          placement="bottom"
+          height="100%"
+          closable={false}
+          className="catalog-form-drawer-mobile"
+          title={null}
+        >
+          {formShell}
+        </Drawer>
+      ) : (
+        <Modal
+          open={open}
+          onClose={onClose}
+          forceRender
+          destroyOnHidden={false}
+          width="min(1456px, calc(100vw - 32px))"
+          centered
+          closable={false}
+          onCancel={onClose}
+          className="catalog-form-modal"
+          title={null}
+          footer={null}
+        >
+          {formShell}
+        </Modal>
+      )}
 
       <Modal
         open={categoryModalOpen}
@@ -1867,6 +1950,36 @@ export default function ProductFormDrawer({
       >
         {renderFaqPanel()}
       </Modal>
+
+      <Drawer
+        open={stepMenuOpen && isMobileLayout}
+        placement="bottom"
+        height="auto"
+        onClose={() => setStepMenuOpen(false)}
+        className="catalog-mobile-drawer catalog-mobile-step-drawer"
+        title="Jump to step"
+      >
+        <div className="catalog-mobile-step-list">
+          {sectionItems.map((item, index) => (
+            <Button
+              key={item.key}
+              type="text"
+              className={`catalog-mobile-step-item${currentStep === index ? " is-active" : ""}`}
+              onClick={() => {
+                setCurrentStep(index);
+                setSaveError("");
+                setStepMenuOpen(false);
+              }}
+            >
+              <span className="catalog-mobile-step-item__index">{index + 1}</span>
+              <span className="catalog-mobile-step-item__copy">
+                <strong>{item.label}</strong>
+                <small>{item.description}</small>
+              </span>
+            </Button>
+          ))}
+        </div>
+      </Drawer>
     </>
   );
 }

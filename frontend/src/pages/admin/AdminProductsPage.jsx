@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Card, Empty, Modal, Spin, message } from "antd";
+import { Button, Card, Drawer, Empty, Grid, Modal, Skeleton, Spin, message } from "antd";
 import {
   AppstoreOutlined,
   BoxPlotOutlined,
+  CheckOutlined,
   DeleteOutlined,
+  EllipsisOutlined,
   FileTextOutlined,
   FolderAddOutlined,
   InboxOutlined,
@@ -114,6 +116,8 @@ function getCatalogSummary(products) {
 }
 
 export default function AdminProductsPage() {
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const { productId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -124,11 +128,16 @@ export default function AdminProductsPage() {
   const [pendingOrphanDelete, setPendingOrphanDelete] = useState(null);
   const [deletingOrphanKey, setDeletingOrphanKey] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [orphanLoading, setOrphanLoading] = useState(false);
   const [orphanSectionExpanded, setOrphanSectionExpanded] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [pageActionsOpen, setPageActionsOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState(defaultFilters);
   const [filters, setFilters] = useState(defaultFilters);
+  const [sortValue, setSortValue] = useState("default");
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedProductIds, setSelectedProductIds] = useState([]);
   const productsBasePath = useMemo(() => getProductsBasePath(location.pathname), [location.pathname]);
   const drawerOpen = location.pathname.endsWith("/new") || Boolean(productId);
   const canRead = hasPermission("products.read");
@@ -140,6 +149,7 @@ export default function AdminProductsPage() {
 
   const loadCatalog = async () => {
     setLoading(true);
+    setLoadError("");
     try {
       const [productData, categoryData] = await Promise.all([
         getProducts({ admin: true }),
@@ -148,7 +158,9 @@ export default function AdminProductsPage() {
       setProducts(productData);
       setCategories(categoryData);
     } catch (error) {
-      message.error(getApiErrorMessage(error, "Catalog load failed."));
+      const detail = getApiErrorMessage(error, "Catalog load failed.");
+      setLoadError(detail);
+      message.error(detail);
     } finally {
       setLoading(false);
     }
@@ -182,7 +194,7 @@ export default function AdminProductsPage() {
   const filteredProducts = useMemo(() => {
     const search = filters.search.trim().toLowerCase();
 
-    return products.filter((product) => {
+    const matches = products.filter((product) => {
       const matchesSearch =
         !search ||
         [product.displayName, product.sku, product.displayCategory, ...(product.tags || [])]
@@ -205,11 +217,28 @@ export default function AdminProductsPage() {
         matchesStockFilter(product, filters.stock)
       );
     });
+
+    return matches;
   }, [filters, products]);
 
   const stats = useMemo(() => buildCatalogStats(products), [products]);
   const summary = useMemo(() => getCatalogSummary(products), [products]);
   const isRefreshing = loading || orphanLoading;
+  const mobileSummary = useMemo(
+    () => ({
+      total: products.length,
+      ready: products.filter((product) => product.workflowStatus === "ready_to_publish").length,
+      lowStock: products.filter((product) => product.stockStatus === "Low Stock").length
+    }),
+    [products]
+  );
+  const activeFilterCount = useMemo(
+    () =>
+      ["category", "status", "visibility", "stock"].filter(
+        (key) => filters[key] && filters[key] !== "all"
+      ).length,
+    [filters]
+  );
 
   const closeDrawer = () => {
     navigate(productsBasePath);
@@ -360,67 +389,144 @@ export default function AdminProductsPage() {
       });
   };
 
+  const renderMobileLoadingState = () => (
+    <div className="catalog-mobile-skeleton-list" aria-hidden="true">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={index} className="catalog-mobile-skeleton-row">
+          <Skeleton.Avatar active shape="square" size={92} />
+          <Skeleton active paragraph={{ rows: 3 }} title={{ width: "55%" }} />
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className="catalog-admin-page">
-      <Card className="nuva-card catalog-shell-card catalog-header-card">
-        <div className="catalog-header-shell">
-          <div className="catalog-header-content">
-            <h1>Products</h1>
-            <p className="catalog-header-description">
-              Manage one complete record for each NUVA product, including workflow readiness,
-              media, pricing, and shared stock details.
-            </p>
+      {isMobile ? (
+        <>
+          <div className="catalog-mobile-intro">
+            <div className="catalog-mobile-intro__copy">
+              <h1>Products</h1>
+              <p>Manage products, pricing, stock and publishing.</p>
+            </div>
+            <Button
+              type="text"
+              className="catalog-mobile-page-menu"
+              icon={<EllipsisOutlined />}
+              aria-label="More product actions"
+              onClick={() => setPageActionsOpen(true)}
+            />
           </div>
 
-          <div className="catalog-header-actions">
-            <Button
-              className="catalog-header-button catalog-header-button-refresh"
-              icon={<ReloadOutlined />}
-              onClick={handleImportProducts}
-              loading={isRefreshing}
-              disabled={isRefreshing}
-            >
-              Refresh
-            </Button>
-            <Button
-              className="catalog-header-button catalog-header-button-secondary"
-              icon={<FolderAddOutlined />}
-              onClick={() => setCategoryModalOpen(true)}
-              disabled={!canManageCategories}
-            >
-              Add Category
-            </Button>
-            <Button
-              type="primary"
-              className="catalog-header-button catalog-header-button-primary"
-              icon={<PlusOutlined />}
-              onClick={openNewProduct}
-              disabled={!canCreate}
-            >
-              Add Product
-            </Button>
+          {selectionMode ? (
+            <div className="catalog-mobile-selection-banner">
+              <strong>{selectedProductIds.length} selected</strong>
+              <Button
+                type="text"
+                onClick={() => {
+                  setSelectionMode(false);
+                  setSelectedProductIds([]);
+                }}
+              >
+                Exit selection
+              </Button>
+            </div>
+          ) : null}
+
+          <ProductFilters
+            filters={draftFilters}
+            appliedFilters={filters}
+            categories={categories}
+            sortValue={sortValue}
+            sortOptions={[{ label: "Newest", value: "default" }]}
+            onSortChange={setSortValue}
+            onChange={(key, value) => setDraftFilters((current) => ({ ...current, [key]: value }))}
+            onReset={() => {
+              setDraftFilters(defaultFilters);
+              setFilters(defaultFilters);
+            }}
+            onApply={() => setFilters(draftFilters)}
+          />
+
+          <div className="catalog-mobile-summary-strip" aria-label="Catalog summary">
+            <span>
+              <strong>{mobileSummary.total}</strong> Products
+            </span>
+            <span>
+              <strong>{mobileSummary.ready}</strong> Ready
+            </span>
+            <span>
+              <strong>{mobileSummary.lowStock}</strong> Low stock
+            </span>
           </div>
-        </div>
-      </Card>
+        </>
+      ) : (
+        <>
+          <Card className="nuva-card catalog-shell-card catalog-header-card">
+            <div className="catalog-header-shell">
+              <div className="catalog-header-content">
+                <h1>Products</h1>
+                <p className="catalog-header-description">
+                  Manage one complete record for each NUVA product, including workflow readiness,
+                  media, pricing, and shared stock details.
+                </p>
+              </div>
 
-      <Card className="nuva-card catalog-shell-card">
-        <div className="catalog-phase-note">
-          <strong>Publishing readiness:</strong> {summary.ready} ready to publish,{" "}
-          {summary.imagePending} waiting on showcase media, and {summary.published} already live.
-        </div>
-        <ProductFilters
-          filters={draftFilters}
-          categories={categories}
-          onChange={(key, value) => setDraftFilters((current) => ({ ...current, [key]: value }))}
-          onReset={() => {
-            setDraftFilters(defaultFilters);
-            setFilters(defaultFilters);
-          }}
-          onApply={() => setFilters(draftFilters)}
-        />
-      </Card>
+              <div className="catalog-header-actions">
+                <Button
+                  className="catalog-header-button catalog-header-button-refresh"
+                  icon={<ReloadOutlined />}
+                  onClick={handleImportProducts}
+                  loading={isRefreshing}
+                  disabled={isRefreshing}
+                >
+                  Refresh
+                </Button>
+                <Button
+                  className="catalog-header-button catalog-header-button-secondary"
+                  icon={<FolderAddOutlined />}
+                  onClick={() => setCategoryModalOpen(true)}
+                  disabled={!canManageCategories}
+                >
+                  Add Category
+                </Button>
+                <Button
+                  type="primary"
+                  className="catalog-header-button catalog-header-button-primary"
+                  icon={<PlusOutlined />}
+                  onClick={openNewProduct}
+                  disabled={!canCreate}
+                >
+                  Add Product
+                </Button>
+              </div>
+            </div>
+          </Card>
 
-      <AdminKpiSection title="Product Readiness" items={stats} />
+          <Card className="nuva-card catalog-shell-card">
+            <div className="catalog-phase-note">
+              <strong>Publishing readiness:</strong> {summary.ready} ready to publish,{" "}
+              {summary.imagePending} waiting on showcase media, and {summary.published} already live.
+            </div>
+            <ProductFilters
+              filters={draftFilters}
+              appliedFilters={filters}
+              categories={categories}
+              sortValue={sortValue}
+              sortOptions={[{ label: "Newest", value: "default" }]}
+              onSortChange={setSortValue}
+              onChange={(key, value) => setDraftFilters((current) => ({ ...current, [key]: value }))}
+              onReset={() => {
+                setDraftFilters(defaultFilters);
+                setFilters(defaultFilters);
+              }}
+              onApply={() => setFilters(draftFilters)}
+            />
+          </Card>
+
+          <AdminKpiSection title="Product Readiness" items={stats} />
+        </>
+      )}
 
       {(orphanLoading || orphanImages.length > 0) && (
         <Card
@@ -495,11 +601,26 @@ export default function AdminProductsPage() {
       <Card className="nuva-card catalog-table-card">
         {!canRead ? (
           <Empty description="You do not have permission to view central product records." />
+        ) : loading && isMobile ? (
+          renderMobileLoadingState()
+        ) : loadError ? (
+          <Empty
+            description={loadError}
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          >
+            <Button icon={<ReloadOutlined />} onClick={refreshAll}>
+              Retry
+            </Button>
+          </Empty>
         ) : filteredProducts.length ? (
           <ProductTable
             products={filteredProducts}
             loading={loading}
             permissions={permissions}
+            selectionMode={selectionMode}
+            selectedProductIds={selectedProductIds}
+            onSelectedProductIdsChange={setSelectedProductIds}
+            onSelectionModeChange={setSelectionMode}
             onEdit={openEditProduct}
             onView={handleViewProduct}
             onDuplicate={handleDuplicate}
@@ -509,7 +630,13 @@ export default function AdminProductsPage() {
             onDeleteBulk={handleDeleteBulk}
           />
         ) : (
-          <Empty description="No product records match the current workflow, stock, or media filters." />
+          <Empty
+            description={
+              products.length
+                ? "No product records match the current workflow, stock, or media filters."
+                : "No products yet."
+            }
+          />
         )}
       </Card>
 
@@ -555,6 +682,69 @@ export default function AdminProductsPage() {
           its backend record as well.
         </p>
       </Modal>
+
+      <Drawer
+        open={pageActionsOpen}
+        placement="bottom"
+        height="auto"
+        onClose={() => setPageActionsOpen(false)}
+        className="catalog-mobile-drawer catalog-mobile-page-drawer"
+        title="More Actions"
+      >
+        <div className="catalog-mobile-action-list">
+          <Button
+            type="text"
+            className="catalog-mobile-action-item"
+            icon={<ReloadOutlined />}
+            loading={isRefreshing}
+            disabled={isRefreshing}
+            onClick={async () => {
+              await handleImportProducts();
+              setPageActionsOpen(false);
+            }}
+          >
+            Refresh Products
+          </Button>
+          <Button
+            type="text"
+            className="catalog-mobile-action-item"
+            icon={<FolderAddOutlined />}
+            disabled={!canManageCategories}
+            onClick={() => {
+              setCategoryModalOpen(true);
+              setPageActionsOpen(false);
+            }}
+          >
+            Manage/Add Category
+          </Button>
+          <Button
+            type="text"
+            className="catalog-mobile-action-item"
+            icon={<CheckOutlined />}
+            disabled={!canDelete}
+            onClick={() => {
+              setSelectionMode(true);
+              setPageActionsOpen(false);
+            }}
+          >
+            Select Products
+          </Button>
+        </div>
+      </Drawer>
+
+      {isMobile ? (
+        <div className="catalog-mobile-add-bar">
+          <Button
+            type="primary"
+            className="catalog-mobile-add-button"
+            icon={<PlusOutlined />}
+            onClick={openNewProduct}
+            disabled={!canCreate}
+          >
+            Add Product
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }
