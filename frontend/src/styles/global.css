@@ -1490,6 +1490,9 @@ textarea.ant-input::placeholder,
 
   .admin-mobile-more-drawer .ant-drawer-content {
     border-radius: 18px 18px 0 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    overflow: hidden;
   }
 
   .admin-mobile-more-drawer .ant-drawer-header {
@@ -1498,7 +1501,11 @@ textarea.ant-input::placeholder,
   }
 
   .admin-mobile-more-drawer .ant-drawer-body {
+    min-height: 0;
     padding: 0 16px calc(16px + env(safe-area-inset-bottom));
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .admin-mobile-more-sheet {

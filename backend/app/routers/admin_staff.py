@@ -33,6 +33,18 @@ def now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def coerce_utc_datetime(value: object) -> datetime | None:
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    if isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    return None
+
+
 def maybe_object_id(value: str | None) -> ObjectId | None:
     if value and ObjectId.is_valid(value):
         return ObjectId(value)
@@ -161,19 +173,16 @@ def build_access_warnings(user: dict) -> list[dict]:
 
     last_login_at = user.get("lastLoginAt")
     if user.get("canAccessAdmin") and last_login_at:
-        try:
-            last_seen = datetime.fromisoformat(str(last_login_at).replace("Z", "+00:00"))
-            if last_seen < now_utc() - timedelta(days=45):
-                warnings.append(
-                    {
-                        "code": "stale_access",
-                        "label": "No recent admin activity",
-                        "severity": "medium",
-                        "message": "This staff account has not logged in recently and should be reviewed.",
-                    }
-                )
-        except ValueError:
-            pass
+        last_seen = coerce_utc_datetime(last_login_at)
+        if last_seen and last_seen < now_utc() - timedelta(days=45):
+            warnings.append(
+                {
+                    "code": "stale_access",
+                    "label": "No recent admin activity",
+                    "severity": "medium",
+                    "message": "This staff account has not logged in recently and should be reviewed.",
+                }
+            )
 
     return warnings
 

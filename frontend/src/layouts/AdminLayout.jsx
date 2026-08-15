@@ -271,8 +271,18 @@ export default function AdminLayout() {
         placement="bottom"
         height="auto"
         onClose={() => setMobileMoreOpen(false)}
+        destroyOnHidden
         className="admin-mobile-more-drawer"
         title="More"
+        afterOpenChange={(open) => {
+          if (!open || typeof document === "undefined") {
+            return;
+          }
+          window.requestAnimationFrame(() => {
+            const body = document.querySelector(".admin-mobile-more-drawer .ant-drawer-body");
+            body?.scrollTo?.({ top: 0, behavior: "auto" });
+          });
+        }}
       >
         <div className="admin-mobile-more-sheet">
           {mobileMoreGroups.map((group) => (

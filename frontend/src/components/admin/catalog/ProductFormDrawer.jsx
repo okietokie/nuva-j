@@ -47,6 +47,7 @@ import { useCurrency } from "../../../context/CurrencyContext";
 import { buildProductPayload, calculateSuggestedSellingPrice } from "../../../utils/productTransforms";
 import { CURRENCY_OPTIONS, convertCurrencyAmount } from "../../../utils/currency";
 import { getApiErrorMessage } from "../../../utils/getApiErrorMessage";
+import useMobileViewportHeight from "../../../hooks/useMobileViewportHeight";
 import ProductImageUploader from "./ProductImageUploader";
 
 const occasionOptions = ["Daily Wear", "Wedding", "Gift", "Party", "Office", "Travel"];
@@ -383,6 +384,7 @@ export default function ProductFormDrawer({
 }) {
   const screens = Grid.useBreakpoint();
   const isMobileLayout = !screens.md;
+  useMobileViewportHeight(open && isMobileLayout, { propertyPrefix: "product-editor" });
   const [form] = Form.useForm();
   const [categoryForm] = Form.useForm();
   const [supplierForm] = Form.useForm();
@@ -418,13 +420,32 @@ export default function ProductFormDrawer({
   const faqHighlightTimeoutRef = useRef(null);
   const formScrollRef = useRef(null);
   const shellRef = useRef(null);
+  const headerRef = useRef(null);
+  const footerRef = useRef(null);
   const pendingFocusFieldRef = useRef(null);
+  const pendingFocusScrollFrameRef = useRef(0);
+  const viewportWatchFrameRef = useRef(0);
+  const lastFocusedFieldRef = useRef(null);
+  const stepScrollPositionsRef = useRef({});
+  const stepTransitionReasonRef = useRef("initial");
   const isEdit = Boolean(productId);
   const canSave = isEdit ? canUpdate : canCreate;
   const prefersReducedMotion =
     typeof window !== "undefined" &&
     window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
   const scrollBehavior = prefersReducedMotion ? "auto" : "smooth";
+
+  const cancelPendingFocusScroll = () => {
+    if (pendingFocusScrollFrameRef.current) {
+      window.cancelAnimationFrame(pendingFocusScrollFrameRef.current);
+      pendingFocusScrollFrameRef.current = 0;
+    }
+
+    if (viewportWatchFrameRef.current) {
+      window.cancelAnimationFrame(viewportWatchFrameRef.current);
+      viewportWatchFrameRef.current = 0;
+    }
+  };
 
   const stepFieldMap = [
     ["name", "categoryId", "sku", "description"],
@@ -582,7 +603,7 @@ export default function ProductFormDrawer({
     return node?.closest(".ant-form-item") || node || null;
   };
 
-  const scrollNodeIntoEditorView = (node) => {
+  const ensureFieldVisible = (node, behavior = scrollBehavior) => {
     const container = formScrollRef.current;
     if (!container || !(node instanceof HTMLElement)) {
       return;
@@ -590,24 +611,27 @@ export default function ProductFormDrawer({
 
     const containerRect = container.getBoundingClientRect();
     const targetRect = node.getBoundingClientRect();
-    const offsetTop = targetRect.top - containerRect.top + container.scrollTop;
-    const safeTop = 96;
-    const safeBottom = 124;
-    const targetBottom = offsetTop + targetRect.height;
-    const visibleTop = container.scrollTop + safeTop;
-    const visibleBottom = container.scrollTop + container.clientHeight - safeBottom;
+    const margin = 20;
 
-    if (offsetTop < visibleTop || targetBottom > visibleBottom) {
-      container.scrollTo({
-        top: Math.max(0, offsetTop - safeTop),
-        behavior: scrollBehavior
+    if (targetRect.top < containerRect.top + margin) {
+      container.scrollBy({
+        top: targetRect.top - containerRect.top - margin,
+        behavior
+      });
+      return;
+    }
+
+    if (targetRect.bottom > containerRect.bottom - margin) {
+      container.scrollBy({
+        top: targetRect.bottom - containerRect.bottom + margin,
+        behavior
       });
     }
   };
 
   const focusFieldInsideEditor = (fieldName) => {
     const node = resolveFieldNode(fieldName);
-    scrollNodeIntoEditorView(node);
+    ensureFieldVisible(node, "auto");
 
     const focusTarget =
       node?.querySelector?.(
@@ -615,8 +639,57 @@ export default function ProductFormDrawer({
       ) || node;
 
     if (focusTarget instanceof HTMLElement) {
-      focusTarget.focus({ preventScroll: true });
+      window.requestAnimationFrame(() => {
+        focusTarget.focus({ preventScroll: true });
+      });
     }
+  };
+
+  const scheduleFocusedFieldVisibility = (target) => {
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    cancelPendingFocusScroll();
+    lastFocusedFieldRef.current = target;
+
+    let lastSignature = "";
+    let stableFrames = 0;
+
+    const tick = () => {
+      const viewport = window.visualViewport;
+      const signature = [
+        Math.round(viewport?.height || window.innerHeight || 0),
+        Math.round(viewport?.offsetTop || 0),
+        Math.round(window.innerHeight || 0)
+      ].join(":");
+
+      if (signature === lastSignature) {
+        stableFrames += 1;
+      } else {
+        lastSignature = signature;
+        stableFrames = 0;
+      }
+
+      if (stableFrames >= 1) {
+        ensureFieldVisible(target.closest(".ant-form-item") || target);
+        pendingFocusScrollFrameRef.current = 0;
+        return;
+      }
+
+      pendingFocusScrollFrameRef.current = window.requestAnimationFrame(tick);
+    };
+
+    pendingFocusScrollFrameRef.current = window.requestAnimationFrame(tick);
+  };
+
+  const rememberCurrentStepScroll = () => {
+    const container = formScrollRef.current;
+    if (!container) {
+      return;
+    }
+
+    stepScrollPositionsRef.current[currentStep] = container.scrollTop;
   };
 
   useEffect(() => {
@@ -677,14 +750,26 @@ export default function ProductFormDrawer({
     }
 
     window.requestAnimationFrame(() => {
-      if (!pendingFocusFieldRef.current) {
-        formScrollRef.current?.scrollTo?.({ top: 0, behavior: "auto" });
+      const container = formScrollRef.current;
+      if (!container) {
+        return;
       }
+
+      const reason = stepTransitionReasonRef.current;
+      if (reason === "manual") {
+        container.scrollTo({ top: 0, behavior: "auto" });
+      } else if (reason === "restore") {
+        container.scrollTo({ top: stepScrollPositionsRef.current[currentStep] || 0, behavior: "auto" });
+      }
+
+      stepTransitionReasonRef.current = "preserve";
     });
   }, [currentStep, open]);
 
   useEffect(() => {
     if (!open) {
+      cancelPendingFocusScroll();
+      lastFocusedFieldRef.current = null;
       form.resetFields();
       setCurrentStep(clampedInitialStep);
       setSaveError("");
@@ -692,6 +777,8 @@ export default function ProductFormDrawer({
       setPriceManuallyEdited(false);
       setFaqPanelOpen(false);
       setFaqSearch("");
+      stepScrollPositionsRef.current = {};
+      stepTransitionReasonRef.current = "initial";
       return;
     }
 
@@ -701,6 +788,8 @@ export default function ProductFormDrawer({
       setSaveError("");
       setImageList([]);
       setPriceManuallyEdited(false);
+      stepScrollPositionsRef.current = {};
+      stepTransitionReasonRef.current = "initial";
       return;
     }
 
@@ -720,6 +809,8 @@ export default function ProductFormDrawer({
           Math.abs(Number(product.price || 0) - Number(product.suggestedSellingPrice || 0)) > 0.009
         );
         setImageList(product.images || []);
+        stepScrollPositionsRef.current = {};
+        stepTransitionReasonRef.current = "initial";
         setCurrentStep(clampedInitialStep);
       })
       .catch((error) => {
@@ -750,22 +841,59 @@ export default function ProductFormDrawer({
       return undefined;
     }
 
+    const shellNode = shellRef.current;
+    if (!shellNode) {
+      return undefined;
+    }
+
     const handleFocusIn = (event) => {
       const target = event.target;
-      if (!(target instanceof HTMLElement) || !shellRef.current?.contains(target)) {
+      if (!(target instanceof HTMLElement)) {
         return;
       }
 
-      window.requestAnimationFrame(() => {
-        scrollNodeIntoEditorView(target.closest(".ant-form-item") || target);
-      });
+      scheduleFocusedFieldVisibility(target);
     };
 
-    document.addEventListener("focusin", handleFocusIn);
+    const handleViewportChange = () => {
+      if (!lastFocusedFieldRef.current) {
+        return;
+      }
+
+      scheduleFocusedFieldVisibility(lastFocusedFieldRef.current);
+    };
+
+    shellNode.addEventListener("focusin", handleFocusIn);
+    window.visualViewport?.addEventListener("resize", handleViewportChange);
+    window.visualViewport?.addEventListener("scroll", handleViewportChange);
+
     return () => {
-      document.removeEventListener("focusin", handleFocusIn);
+      cancelPendingFocusScroll();
+      shellNode.removeEventListener("focusin", handleFocusIn);
+      window.visualViewport?.removeEventListener("resize", handleViewportChange);
+      window.visualViewport?.removeEventListener("scroll", handleViewportChange);
     };
   }, [isMobileLayout, open]);
+
+  useEffect(() => {
+    if (!open) {
+      return undefined;
+    }
+
+    const container = formScrollRef.current;
+    if (!container) {
+      return undefined;
+    }
+
+    const handleScroll = () => {
+      stepScrollPositionsRef.current[currentStep] = container.scrollTop;
+    };
+
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      container.removeEventListener("scroll", handleScroll);
+    };
+  }, [currentStep, open]);
 
   useEffect(() => {
     if (!open) {
@@ -1127,6 +1255,8 @@ export default function ProductFormDrawer({
       const stepIndex = stepFieldMap.findIndex((fields) => fields.includes(fieldName[0]));
       if (stepIndex >= 0 && stepIndex !== currentStep) {
         pendingFocusFieldRef.current = fieldName;
+        rememberCurrentStepScroll();
+        stepTransitionReasonRef.current = "validation";
         setCurrentStep(stepIndex);
       } else {
         window.requestAnimationFrame(() => {
@@ -1184,6 +1314,8 @@ export default function ProductFormDrawer({
     try {
       await form.validateFields(stepFieldMap[currentStep]);
       setSaveError("");
+      rememberCurrentStepScroll();
+      stepTransitionReasonRef.current = "manual";
       setCurrentStep((step) => step + 1);
     } catch (errorInfo) {
       focusFirstError(errorInfo, "Please complete this step before continuing.");
@@ -1192,6 +1324,8 @@ export default function ProductFormDrawer({
 
   const goBack = () => {
     setSaveError("");
+    rememberCurrentStepScroll();
+    stepTransitionReasonRef.current = "manual";
     setCurrentStep((step) => Math.max(0, step - 1));
   };
 
@@ -1746,7 +1880,7 @@ export default function ProductFormDrawer({
       ref={shellRef}
       className={`catalog-modal-shell${isMobileLayout ? " is-mobile" : ""}`}
     >
-      <header className="catalog-modal-header">
+      <header ref={headerRef} className="catalog-modal-header">
         <div className="catalog-modal-header-copy">
           <div className="catalog-mobile-form-topline">
             <Button
@@ -1816,6 +1950,8 @@ export default function ProductFormDrawer({
                   aria-current={isActive ? "step" : undefined}
                   onClick={() => {
                     setSaveError("");
+                    rememberCurrentStepScroll();
+                    stepTransitionReasonRef.current = "manual";
                     setCurrentStep(index);
                   }}
                 >
@@ -1848,7 +1984,7 @@ export default function ProductFormDrawer({
         </div>
       </div>
 
-      <footer className={`catalog-modal-footer${isMobileLayout ? " is-mobile" : ""}`}>
+      <footer ref={footerRef} className={`catalog-modal-footer${isMobileLayout ? " is-mobile" : ""}`}>
         <div className="catalog-modal-footer-start">
           {!isMobileLayout ? (
             <Button type="text" onClick={onClose}>
@@ -1888,10 +2024,10 @@ export default function ProductFormDrawer({
           open={open}
           onClose={onClose}
           destroyOnHidden={false}
-          placement="bottom"
-          height="100%"
+          placement="right"
+          width="100%"
           closable={false}
-          className="catalog-form-drawer-mobile"
+          rootClassName="catalog-form-drawer-mobile"
           title={null}
         >
           {formShell}
@@ -2035,6 +2171,8 @@ export default function ProductFormDrawer({
               type="text"
               className={`catalog-mobile-step-item${currentStep === index ? " is-active" : ""}`}
               onClick={() => {
+                rememberCurrentStepScroll();
+                stepTransitionReasonRef.current = "manual";
                 setCurrentStep(index);
                 setSaveError("");
                 setStepMenuOpen(false);
